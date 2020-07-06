@@ -1,80 +1,57 @@
-from cipher import *
-from tools import *
-from Crypto.PublicKey import RSA
-from Crypto.Signature import PKCS1_v1_5
-from Crypto.Hash import SHA
-
-msg = "hello, how are you!aaaaaaaaaaaaaaaaaaa" * 2
-msg_len = encode_header_len(msg)
-
-alice = "alice"
-bob = "bob"
-generate_RSA(alice)
-generate_RSA(bob)
-generate_AES(alice)
-
-"""
-end to end encryption
-1: client1生成RSA密钥对，私钥cs1，公开公钥cp1
-2: client2生成RSA密钥对，私钥cs2，公开公钥cp2
-3: client1利用AES生成对称密钥E，向server发送 [cp2(E) | cs1(hash(E))]
-4: server转发至client2
-5: client2利用私钥cs2，解密得对称密钥E，对E进行hash运算，利用公钥cp1解密得hash(E)进行比对
-6: 之后发消息，使用 E[m | cs(hash(m))]，提供加密、签名、认证
-"""
+import tkinter as tk
+import tkinter.messagebox
 
 
-def decode_message(self, other, aes, rsa, msg_len):
-    # msg_len = self.client.recv(self.HEADER_LEN).decode('utf-8')
-    msg_len = msg_len.decode('utf-8')
-    msg_len = int(msg_len.strip())
+window = tk.Tk()
+window.title('title')
+window.geometry('300x300+500+300')
+
+# var = tk.StringVar()
+# var1 = tk.BooleanVar()
+# var2 = tk.BooleanVar()
+#
+# l = tk.Label(window, bg='yellow', width=4, textvariable=var)
+# l.pack()
+#
+# def print_func():
+#     if var1.get() and var2.get():
+#         var.set('both')
+#     else:
+#         var.set('0')
+#
+# canvas = tk.Canvas(window, bg='blue', height=500, width=500)
+# image_file = tk.PhotoImage(file="pic07-06-13-18-25.png")
+# image = canvas.create_image(0, 0, anchor='center', image=image_file)
+#
+# canvas.pack()
+#
+# def moveit():
+#     canvas.move(image, 20, 20)
+#
+# c1 = tk.Checkbutton(window, text='123', variable=var1, onvalue=True, offvalue=False, command=print_func)
+# c2 = tk.Checkbutton(window, text='456', variable=var2, onvalue=True, offvalue=False, command=print_func)
+#
+#
+# s = tk.Scale(window, label='try move', from_=5, to=10, orient=tk.VERTICAL, length=200,
+#              showvalue=True, tickinterval=1, resolution=0.01)
+#
+# s.pack()
+# c1.pack()
+# c2.pack()
 
 
-    aes_key = decrypt_RSA(self, rsa, is_public=False)
-    aes_path = f"{self}/aes.pem"
-    with open(aes_path, 'wb') as file:
-        file.write(aes_key)
-    aes_decode = decrypt_AES(aes_path, aes)
+def hit_me():
+    tk.messagebox.showinfo(title='error', message='errrrrrrrrr')
 
-    msg = try_decode(aes_decode[0:msg_len])
+fram = tk.Frame(window).pack()
+fram_l = tk.Frame(fram)
+fram_l.pack(side='left')
+fram_r = tk.Frame(fram)
+fram_r.pack(side='right')
 
-    signature = aes_decode[msg_len:]
+b = tk.Button(fram_l, text='move', command=hit_me).pack()
+tk.Label(fram_l, text='left frame').place(x=10, y=10)
+tk.Label(fram_l, text='left2 frame').pack()
+tk.Label(fram_r, text='right frame').pack()
 
-    if verify_with_RSA(alice, msg, signature):
-        return msg
-    else:
-        return "wrong message"
-
-
-if __name__ == '__main__':
-    x = "123".encode('utf-8')
-    print(x, len(x))
-    # x = get_AES("bob")
-    # print(len(x))
-    #
-    # en_hash_m = sign_with_RSA(alice, msg)
-    #
-    # temp = msg.encode('utf-8') + en_hash_m
-    # print("AES before", len(temp))
-    #
-    # aes = encrypt_AES(f"{alice}/aes.pem", temp)
-    # aes_len = encode_header_len(aes)
-    # print("AES after", len(aes))
-    #
-    # rsa = encrypt_RSA(bob, get_AES(alice), is_public=True)
-    #
-    #
-    #
-    # temp = aes + encrypt_RSA(bob, get_AES(alice), is_public=True)
-    # all_len = encode_header_len(temp)
-    # print(len(temp), temp)
-    #
-    #
-    #
-    # print('below is decryption process')
-    #
-    # message = all_len + msg_len + aes_len + temp
-    #
-    # x = decode_message(bob, alice, aes, rsa, msg_len)
-    # print(x)
-    # print(x == msg)
+window.mainloop()

@@ -1,21 +1,28 @@
 import os
 from time import ctime
+from datetime import datetime
 
-def is_file(path):
-    return os.path.exists(path)
+def get_time()->str:
+    return str(datetime.now().strftime("%H:%M:%S"))
 
-def standard_output(username, msg, color=None):
-    if color: return f"{CC('red')}>>{username}    {ctime()} \n{msg}"
-    return f">>{username}    {ctime()} \n{msg}"
+def standard_output(username, msg, timestamp):
+    timestamp = datetime.fromtimestamp(float(timestamp))
+    return f">>{username}    {timestamp.strftime('%H:%M:%S')} \n{msg}"
 
-def encode_header_len(data, HEADER_LEN=10)->bytes:
+def receive_data(socket, _header_len=10)->str:
+    try:
+        header = socket.recv(_header_len)
+        if not len(header): return None
+        header = int(header.decode('utf-8').strip())
+        data = socket.recv(header)
+        return data.decode('utf-8')
+    except:
+        return None
+
+
+def encode_header(data, _len=10)->bytes:
     if isinstance(data, str): data = data.encode('utf-8')
-    return f"{len(data) :< {HEADER_LEN}}".encode('utf-8')
-
-def read_file(path):
-    if not is_file(path): return None
-    with open(path, 'rb') as file:
-        return file.read()
+    return f"{len(data) :< {_len}}".encode('utf-8')
 
 def try_encode(msg):
     try:
@@ -31,6 +38,6 @@ def try_decode(msg):
         pass
     return msg
 
-def get_othername(username):
-    if username == 'alice': return 'bob'
-    return 'alice'
+if __name__ == '__main__':
+    x = '123'
+    print(x.encode('utf-8'))

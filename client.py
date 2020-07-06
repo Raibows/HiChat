@@ -1,112 +1,108 @@
 import socket
 import errno
 import sys
-from time import ctime
+import time
 import threading
+from queue import Queue
 from tools import *
-from gui import ClinetGUI
-from cipher import *
 
 
 
 class TCPClient():
-    def __init__(self, server_addr=('127.0.0.1', 5000), HEADER_LEN=10):
-        self.gui = ClinetGUI()
-        self.username = self.gui.run_login()
+    def __init__(self, messages:Queue, server_addr=('127.0.0.1', 5000), HEADER_LEN=10):
+        self.messages = messages
         self.server_addr = server_addr
-        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.client.connect(server_addr)
         self.HEADER_LEN = HEADER_LEN
-        self.client.setblocking(False)
-        data = f"{len(self.username.encode('utf-8')) :< {HEADER_LEN}}" + self.username
-        self.client.send(data.encode('utf-8'))
-        self.output = self.gui.output
         self.stop_signal = False
-        generate_RSA(self.username)
+        self.password = None
+        self.username = None
 
+    def connect_to_server(self):
+        try:
+            self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.client.connect(self.server_addr)
+            self.client.setblocking(False)
+        except:
+            return False
 
-    def decode_message(self, username):
-        all_len = self.client.recv(self.HEADER_LEN).decode('utf-8')
-        msg_len = self.client.recv(self.HEADER_LEN).decode('utf-8')
-        msg_len = int(msg_len.strip())
+    def register(self, username, password):
+        if not self.connect_to_server(): return False
+        data = self.encode_message('None', 'register', password, str(time.time()), username)
+        self.client.send(data)
+        while True:
+            try:
+                res = receive_data(self.client)
+                if res: break
+            except:
+                continue
+        return eval(res)
 
-        aes_header = self.client.recv(self.HEADER_LEN).decode('utf-8')
-        aes_len = int(aes_header.strip())
-        aes = self.client.recv(aes_len)
+    def login(self, username, password):
+        if not self.connect_to_server(): return False
+        data = self.encode_message('None', 'login', password, str(time.time()), username)
+        self.client.send(data)
+        while True:
+            try:
+                res = receive_data(self.client)
+                if res: break
+            except:
+                continue
+        res = eval(res)
+        if res:
+            self.username = username
+            self.password = password
+            return True
+        else: return False
 
-        rsa_header = self.client.recv(self.HEADER_LEN).decode('utf-8')
-        rsa_len = int(rsa_header.strip())
-        rsa = self.client.recv(rsa_len)
-
-        aes_key = decrypt_RSA(self.username, rsa, is_public=False)
-        aes_path = f"{self.username}/aes.pem"
-        with open(aes_path, 'wb') as file:
-            file.write(aes_key)
-        aes_decode = decrypt_AES(aes_path, aes)
-        aes_decode = try_encode(aes_decode)
-
-        msg = aes_decode[0:msg_len]
-        msg = try_decode(msg)
-        if verify_with_RSA(username, msg, aes_decode[msg_len:]):
-            return msg
-        return "Message has been modified!"
-
-
-    def encode_message(self, msg):
-        msg_len = encode_header_len(msg, self.HEADER_LEN)
-        generate_AES(self.username)
-        rsa_hash_m = sign_with_RSA(self.username, msg)
-        msg = try_encode(msg)
-        msg_rsa_hash_m = msg +rsa_hash_m
-        aes = encrypt_AES(f"{self.username}/aes.pem", msg_rsa_hash_m)
-        aes_len = encode_header_len(aes, self.HEADER_LEN)
-        rsa = encrypt_RSA(get_othername(self.username), get_AES(self.username), is_public=True)
-        rsa_len = encode_header_len(rsa, self.HEADER_LEN)
-
-        temp = msg_len + aes_len + aes + rsa_len + rsa
-        all_len = encode_header_len(temp, self.HEADER_LEN)
-
-        return all_len+temp
-
+    def encode_message(self, receiver, msg_type, message, timestamp, username=None):
+        if username is None: username = self.username
+        if msg_type == 'pic':
+            message = open(message, 'r').read()
+        data = encode_header(username) + username.encode('utf-8') + encode_header(receiver) + \
+            receiver.encode('utf-8') + encode_header(msg_type) + msg_type.encode('utf-8') + \
+            encode_header(message) + message.encode('utf-8') + encode_header(timestamp) + timestamp.encode('utf-8')
+        return data
 
 
     def receive_msg(self):
+        time.sleep(3)
         while True and not self.stop_signal:
             try:
                 while True:
-                    username_header = self.client.recv(self.HEADER_LEN).decode('utf-8')
-                    if not len(username_header):
-                        self.output("Connection closed by the Server")
+                    sender_header = self.client.recv(self.HEADER_LEN).decode('utf-8')
+                    if not len(sender_header):
+                        print("Connection closed by the Server")
                         sys.exit()
-                    username_len = int(username_header.strip())
-                    username = self.client.recv(username_len).decode('utf-8')
-                    msg = self.decode_message(username)
-                    self.output(standard_output(username, msg))
-
+                    sender = self.client.recv(int(sender_header.strip())).decode('utf-8')
+                    receiver = receive_data(self.client)
+                    msg_type = receive_data(self.client)
+                    msg = receive_data(self.client)
+                    timestamp = receive_data(self.client)
+                    if msg_type == 'text':
+                        print(standard_output(sender, msg, timestamp))
 
             except IOError as e:
                 if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
                     print('Reading error', str(e))
                     sys.exit()
                 continue
+
             except Exception as e:
                 print("General error", e)
                 sys.exit()
 
+
     def send_msg(self):
         while True and not self.stop_signal:
-            msg = self.gui.text_value.get('text')
-            if msg.empty(): continue
-            msg = msg.get()
+            if self.messages.empty(): continue
+            msg = self.messages.get()
+            receiver = msg[0]
+            msg = msg[1]
             if msg and len(msg) > 0:
-                self.output(standard_output(self.username, msg))
-                if is_file(msg): msg = read_file(msg)
-                msg = self.encode_message(msg)
-                # print(msg)
-                self.client.send(msg)
-
-
-
+                timestamp = str(time.time())
+                print(standard_output(self.username, msg, timestamp))
+                data = self.encode_message(receiver, 'text', msg, timestamp)
+                self.client.send(data)
 
 
     def run(self):
@@ -114,8 +110,6 @@ class TCPClient():
         send_thread.start()
         recv_thread = threading.Thread(target=self.receive_msg)
         recv_thread.start()
-        self.gui.run_chat()
-        self.stop_signal = True
 
 
 
@@ -124,5 +118,4 @@ class TCPClient():
 
 
 if __name__ == '__main__':
-    client = TCPClient()
-    client.run()
+    pass
