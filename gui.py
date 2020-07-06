@@ -1,105 +1,133 @@
-import PySimpleGUI as sg
-from queue import Queue
-from client import TCPClient
+import tkinter as tk
+from tkinter import messagebox
 
-
-class ClinetGUI():
+class LoginPanel():
     def __init__(self):
-        sg.theme('DarkAmber')
-        self.font = ('Helvetica', 18)
-        self.username = None
-        self.window = None
-        self.output = print
-        self.messages = Queue()
-        self.client = TCPClient(self.messages)
+        self.root = tk.Tk()
+        self.root.title('登录')
+        self.root.geometry('500x380+400+300')
+        self.font = ("仿宋", 16, "bold")
 
-    def create_login_layout(self, font):
-        layout = [
-            [sg.Text('Enter your Nickname below', font=font)],
-            [sg.Text('Nickname', font=font), sg.InputText(font=font, text_color='white', size=(20, 1))],
-            [sg.Text('Password', font=font), sg.InputText(font=font, text_color='white', size=(20, 1))],
-            [sg.Button('Ok', font=font), sg.Button('Register', font=font), sg.Button('Cancel', font=font)],
-        ]
-        return layout
-
-    def create_chat_layout(self, font):
-        layout = [
-            [sg.Text(f'Hello, {self.username}', font=font, text_color='white')],
-            [sg.Output(size=(40, 20), font=font, text_color='white', key='OUTPUT')],
-            [sg.Input(font=font, size=(34, 1), do_not_clear=False), sg.FileBrowse(font=font)],
-            [sg.OK(font=font), sg.Cancel(font=font)],
-        ]
-        return layout
-
-    def create_register_layout(self, font):
-        layout = [
-            [sg.Text('Enter your Nickname below', font=font)],
-            [sg.Text('Nickname', font=font), sg.InputText(font=font, text_color='white', size=(20, 1))],
-            [sg.Text('Password', font=font), sg.InputText(font=font, text_color='white', size=(20, 1))],
-            [sg.Text('Repeat', font=font), sg.InputText(font=font, text_color='white', size=(20, 1))],
-            [sg.Button('Ok', font=font), sg.Button('Cancel', font=font)],
-        ]
-        return layout
-
-    def run_register(self):
-        window_register = sg.Window("Register", self.create_register_layout(self.font))
-        res = False
-        while True:
-            event, values = window_register.read()
-            if event == sg.WIN_CLOSED or event == 'Cancel': break
-            if event == 'Ok' and len(values[0]) > 0 and len(values[1]) > 0 and values[1] == values[2]:
-                res = self.client.register(values[0], values[1])
-                if res: break
-                else: sg.popup_error("Register failed!", font=self.font)
-            else:
-                sg.popup_error("Password and Repeat must equal!", font=self.font)
-        if res: sg.popup_ok("Register success!", font=self.font)
-        window_register.close()
+        # header
+        self.header = tk.Canvas(self.root)
+        self.image_file = tk.PhotoImage(file='pics/welcome.png')
+        self.image_file = self.image_file.subsample(2, 2)
+        self.header.place(x=0, y=0, width=380, height=200)
+        self.header.create_image(210, 5, anchor='nw', image=self.image_file)
 
 
-    def run_login(self):
-        window1 = sg.Window("Login", self.create_login_layout(self.font))
-        res = False
-        while True:
-            event, values = window1.read()
-            if event == sg.WIN_CLOSED or event == 'Cancel':
-                break
-            if event == 'Ok' and len(values[0]) and len(values[1]) > 0:
-                res = self.client.login(values[0], values[1])
-                if res:
-                    self.username = values[0]
-                    break
-                else: sg.popup_error("登录失败，检查密码或网络环境", font=self.font)
-            elif event == 'Register':
-                self.run_register()
-            else:
-                sg.popup_error("Input username and password!", font=self.font)
-        window1.close()
-        return res
+        # input
+        self.input = tk.Canvas(self.root, bg='#ffffff')
+        self.input.place(x=0, y=130, heigh=250, width=500)
 
-    def run_chat(self):
-        window2 = sg.Window("Chat", self.create_chat_layout(self.font))
-        self.window = window2
-        self.client.run()
-        while True:
-            event, values = window2.read()
-            if event == sg.WIN_CLOSED or event == 'Cancel':
-                break
-            elif len(values[0]) > 0:
-                self.messages.put(('2', values[0]))
-        self.client.stop_signal = True
-        window2.close()
+        self.btn_login = tk.Button(self.input, text='登陆', bg='#99FFFF', command=self.btn_login_click_event)
+        self.btn_login.place(x=120, y=160, heigh=50, width=100)
+        self.btn_register = tk.Button(self.input, text='注册', bg='#FFFF99', command=self.btn_register_click_event)
+        self.btn_register.place(x=280, y=160, height=50, width=100)
+
+        self.lab_account = tk.Label(self.input, text='账户', font=self.font)
+        self.lab_account.place(x=90, y=30)
+        self.ent_account = tk.Entry(self.input, font=self.font)
+        self.ent_account.place(x=160, y=30)
+        self.lab_password = tk.Label(self.input, text='密码', font=self.font)
+        self.lab_password.place(x=90, y=90)
+        self.ent_password = tk.Entry(self.input, font=self.font, show='*')
+        self.ent_password.place(x=160, y=90)
+
+
+    def check_account_password(self, account, password):
+        account_len = len(account)
+        password_len = len(password)
+        flag = True
+        if account_len == 0 or password_len == 0:
+            flag = False
+            messagebox.showerror(message='账户和密码不能为空')
+        elif account_len > 6:
+            flag = False
+            messagebox.showerror(message='账户最多为6位')
+        elif password_len > 6:
+            flag = False
+            messagebox.showerror(message='密码最多为6位')
+        return flag
+
+    def btn_login_click_event(self):
+        if self.check_account_password(self.ent_account.get(), self.ent_password.get()):
+            messagebox.showinfo(message='登录成功！')
+
+
+    def btn_register_click_event(self):
+        register_window = RegisterPanel(self.root)
+        register_window.run()
 
     def run(self):
-        res = self.run_login()
-        if res:
-            self.run_chat()
+        self.root.mainloop()
+
+class RegisterPanel:
+    def __init__(self, window:tk.Tk):
+        self.root = tk.Toplevel(window)
+        self.root.title('注册')
+        self.root.geometry('450x350+400+200')
+        self.font = ("仿宋", 16, "bold")
+        tk.Label(self.root, text='注册', font=("仿宋", 22, "bold")).place(x=200, y=20)
+
+        self.input = tk.Canvas(self.root, bg='#ffffff')
+        self.input.place(x=0, y=60, height=290, width=450)
+
+        self.btn_login = tk.Button(self.input, text='注册', bg='#99FFFF', command=self.btn_register_click_event)
+        self.btn_login.place(x=120, y=220, heigh=50, width=100)
+        self.btn_register = tk.Button(self.input, text='取消', bg='#FFFF99', command=self.btn_cancel_click_event)
+        self.btn_register.place(x=280, y=220, height=50, width=100)
+
+        self.lab_account = tk.Label(self.input, text='账户', font=self.font)
+        self.lab_account.place(x=90, y=30)
+        self.ent_account = tk.Entry(self.input, font=self.font)
+        self.ent_account.place(x=160, y=30)
+
+        self.lab_password = tk.Label(self.input, text='密码', font=self.font)
+        self.lab_password.place(x=90, y=90)
+        self.ent_password = tk.Entry(self.input, font=self.font, show='*')
+        self.ent_password.place(x=160, y=90)
+
+        self.lab_password_con = tk.Label(self.input, text='确认', font=self.font)
+        self.lab_password_con.place(x=90, y=150)
+        self.ent_password_con = tk.Entry(self.input, font=self.font, show='*')
+        self.ent_password_con.place(x=160, y=150)
+
+
+    def check(self, acc, pwd, pwd_con):
+        acc_len = len(acc)
+        pwd_len = len(pwd)
+        pwd_con_len = len(pwd_con)
+        flag = True
+        if acc_len == 0 or pwd_len == 0 or pwd_con_len == 0:
+            flag = False
+            messagebox.showerror(message='请填写完整', parent=self.root)
+        elif acc_len > 6 or pwd_len > 6:
+            flag = False
+            messagebox.showerror(message='账号或密码不能大于6位', parent=self.root)
+        elif pwd != pwd_con:
+            flag = False
+            messagebox.showerror(message='密码两次输入不一致', parent=self.root)
+        return flag
 
 
 
-if __name__ == "__main__":
-    clientgui = ClinetGUI()
-    clientgui.run()
+    def btn_register_click_event(self):
+        acc, pwd = self.ent_account.get(), self.ent_password.get()
+        if self.check(acc, pwd, self.ent_password_con.get()):
+            messagebox.showinfo(message='注册成功')
+            self.root.destroy()
+
+    def btn_cancel_click_event(self):
+        self.root.destroy()
+
+    def run(self):
+        self.root.mainloop()
 
 
 
+
+
+if __name__ == '__main__':
+    t = LoginPanel()
+    t.run()

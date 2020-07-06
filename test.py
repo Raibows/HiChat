@@ -1,57 +1,53 @@
+# import tkinter as tk
+#
+# def add_image(img):
+#     text.config(state=tk.NORMAL)
+#     text.image_create(tk.END, image = img) # Example 1
+#     # text.window_create(tk.END, window=tk.Label(text, image=img))
+#     text.insert(tk.END, '\n')
+#     text.config(state=tk.DISABLED)
+#
+# root = tk.Tk()
+#
+# text = tk.Text(root, state=tk.DISABLED)
+# text.pack(padx = 20, pady = 20)
+#
+# tk.Button(root, text = "Insert", command = lambda :add_image(img)).pack()
+#
+# img = tk.PhotoImage(file = "pics/welcome.png")
+#
+# root.mainloop()
+#
+# x = tk.BooleanVar(root, value=False)
+# print(x)
+
 import tkinter as tk
-import tkinter.messagebox
 
+class PageCanvas1(tk.Toplevel):
+    def __init__(self, parent):
+        global arr # why use global? set it as an attribute?
+        global users # same as above?
+        arr = {}
+        tk.Toplevel.__init__(self, parent)
+        self.title('Canvas')
+        self.geometry('400x600')
+        canvas = tk.Canvas(self, bg='white', scrollregion=(0, 0, 400, 20000))
+        canvas.pack(fill='both', expand=True)
 
-window = tk.Tk()
-window.title('title')
-window.geometry('300x300+500+300')
+        vbar = tk.Scrollbar(canvas, orient='vertical')
+        vbar.pack(side='right', fill='y')
+        vbar.config(command=canvas.yview)
+        canvas.config(yscrollcommand=vbar.set)
+        canvas.create_text(5, 0, anchor='nw', text="Choose users: ")
+        # we need a container widget to put into the canvas
+        f = tk.Frame(canvas)
+        # you need to create a window into the canvas for the widget to scroll
+        canvas.create_window((200, 0), window=f, anchor="n")
+        for i in range(0, 1000):
+            arr[i] = tk.IntVar()
+            # widget must be packed into the container, not the canvas
+            tk.Checkbutton(f, text=str(i), variable=arr[i]).pack()#.grid(row=i, sticky=W)
 
-# var = tk.StringVar()
-# var1 = tk.BooleanVar()
-# var2 = tk.BooleanVar()
-#
-# l = tk.Label(window, bg='yellow', width=4, textvariable=var)
-# l.pack()
-#
-# def print_func():
-#     if var1.get() and var2.get():
-#         var.set('both')
-#     else:
-#         var.set('0')
-#
-# canvas = tk.Canvas(window, bg='blue', height=500, width=500)
-# image_file = tk.PhotoImage(file="pic07-06-13-18-25.png")
-# image = canvas.create_image(0, 0, anchor='center', image=image_file)
-#
-# canvas.pack()
-#
-# def moveit():
-#     canvas.move(image, 20, 20)
-#
-# c1 = tk.Checkbutton(window, text='123', variable=var1, onvalue=True, offvalue=False, command=print_func)
-# c2 = tk.Checkbutton(window, text='456', variable=var2, onvalue=True, offvalue=False, command=print_func)
-#
-#
-# s = tk.Scale(window, label='try move', from_=5, to=10, orient=tk.VERTICAL, length=200,
-#              showvalue=True, tickinterval=1, resolution=0.01)
-#
-# s.pack()
-# c1.pack()
-# c2.pack()
-
-
-def hit_me():
-    tk.messagebox.showinfo(title='error', message='errrrrrrrrr')
-
-fram = tk.Frame(window).pack()
-fram_l = tk.Frame(fram)
-fram_l.pack(side='left')
-fram_r = tk.Frame(fram)
-fram_r.pack(side='right')
-
-b = tk.Button(fram_l, text='move', command=hit_me).pack()
-tk.Label(fram_l, text='left frame').place(x=10, y=10)
-tk.Label(fram_l, text='left2 frame').pack()
-tk.Label(fram_r, text='right frame').pack()
-
-window.mainloop()
+if __name__ == "__main__":
+    app = PageCanvas1(None)
+    app.mainloop()
