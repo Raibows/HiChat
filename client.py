@@ -16,7 +16,12 @@ class TCPClient():
         self.stop_signal = False
         self.password = None
         self.username = None
-        self.receive_queue = PriorityQueue()
+        self.receive_queue = None
+        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client.connect(self.server_addr)
+        self.client.setblocking(False)
+        self.thread_pause = False
+        self.output_func = None
 
     def connect_to_server(self):
         try:
@@ -28,7 +33,6 @@ class TCPClient():
         return True
 
     def register(self, username, password):
-        if not self.connect_to_server(): return False
         data = self.encode_message('None', 'register', password, str(time.time()), username)
         self.client.send(data)
         while True:
@@ -40,7 +44,6 @@ class TCPClient():
         return eval(res.decode('utf-8'))
 
     def login(self, username, password):
-        if not self.connect_to_server(): return False
         data = self.encode_message('None', 'login', password, str(time.time()), username)
         self.client.send(data)
         while True:
@@ -57,7 +60,7 @@ class TCPClient():
         else: return False
 
     def search_user_exist(self, username):
-        if not self.connect_to_server(): return False
+        self.thread_pause = True
         data = self.encode_message('None', 'search', username, str(time.time()))
         self.client.send(data)
         while True:
@@ -67,16 +70,21 @@ class TCPClient():
             except:
                 continue
         res = eval(res.decode('utf-8'))
+        self.thread_pause = False
         return res
 
 
     def encode_message(self, receiver, msg_type, message, timestamp, username=None):
         if username is None: username = self.username
         if msg_type == 'pic':
-            message = open(message, 'r').read()
-        data = encode_header(username) + username.encode('utf-8') + encode_header(receiver) + \
-            receiver.encode('utf-8') + encode_header(msg_type) + msg_type.encode('utf-8') + \
-            encode_header(message) + message.encode('utf-8') + encode_header(timestamp) + timestamp.encode('utf-8')
+            data = encode_header(username) + username.encode('utf-8') + encode_header(receiver) + \
+                   receiver.encode('utf-8') + encode_header(msg_type) + msg_type.encode('utf-8') + \
+                   encode_header(message) + message + encode_header(timestamp) + str(timestamp).encode(
+                'utf-8')
+        else:
+            data = encode_header(username) + username.encode('utf-8') + encode_header(receiver) + \
+                receiver.encode('utf-8') + encode_header(msg_type) + msg_type.encode('utf-8') + \
+                encode_header(message) + message.encode('utf-8') + encode_header(timestamp) + str(timestamp).encode('utf-8')
         return data
 
 
@@ -85,16 +93,20 @@ class TCPClient():
         while True and not self.stop_signal:
             try:
                 while True:
+                    if self.thread_pause: continue
                     sender_header = self.client.recv(self.HEADER_LEN).decode('utf-8')
                     if not len(sender_header):
                         print("Connection closed by the Server")
                         sys.exit()
                     sender = self.client.recv(int(sender_header.strip())).decode('utf-8')
-                    receiver = receive_data(self.client)
-                    msg_type = receive_data(self.client)
+                    receiver = receive_data(self.client, decode_flag=True)
+                    msg_type = receive_data(self.client, decode_flag=True)
                     msg = receive_data(self.client)
-                    timestamp = receive_data(self.client)
+                    timestamp = receive_data(self.client, decode_flag=True)
+                    # self.output_func(MessageNode(msg_type, timestamp, msg, sender, receiver))
+                    # print(sender, receiver, msg_type, msg, timestamp)
                     self.receive_queue.put(MessageNode(msg_type, timestamp, msg, sender, receiver))
+
 
             except IOError as e:
                 if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
@@ -118,7 +130,8 @@ class TCPClient():
                 self.client.send(data)
 
 
-    def run(self):
+    def run(self, receive_queue):
+        self.receive_queue = receive_queue
         send_thread = threading.Thread(target=self.send_msg)
         send_thread.start()
         recv_thread = threading.Thread(target=self.receive_msg)

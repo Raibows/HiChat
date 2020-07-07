@@ -62,6 +62,7 @@ class TCPServer():
                     self.messages.put(data)
                     time.sleep(0.8)
                     continue
+                print(f"{get_time()} Broadcast {data}")
                 self.clients_id[data[2]].send(self.encode_msg(data))
             else: time.sleep(0.5)
 
@@ -93,11 +94,13 @@ class TCPServer():
         res = encode_header(res) + res.encode('utf-8')
         client_sk.send(res)
 
-    def handle_search(self, client_sk: socket.socket, data):
+    def handle_search(self, client_sk:socket.socket, data):
+        self.clients_id[data[1]] = client_sk
         username = data[3].decode('utf-8')
         if username in self.users:
             res = 'True'
         else: res = 'False'
+        print(f"{get_time()} Search {res} from {client_sk.getsockname()} username {data[1]}")
         res = encode_header(res) + res.encode('utf-8')
         client_sk.send(res)
 
@@ -114,6 +117,8 @@ class TCPServer():
                         self.handle_register(client_sk, data)
                     elif data[0] == 'login':
                        self.handle_login(client_sk, data)
+                    elif data[0] == 'search':
+                        self.handle_search(client_sk, data)
                 else:
                     data = self.receive_msg(sk)
                     if None in data:
@@ -126,6 +131,7 @@ class TCPServer():
                     else:
                         print(f"{get_time()} Received {data}")
                         self.messages.put(data)
+
 
             for sk in exception_sockets:
                 self.sockets_list.remove(sk)

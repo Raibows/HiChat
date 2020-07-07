@@ -3,6 +3,7 @@ from time import ctime
 import tkinter as tk
 from datetime import datetime
 
+
 class MessageNode():
     def __init__(self, msg_type, timestamp, msg, sender, receiver):
         self.msg_type = msg_type
@@ -11,19 +12,13 @@ class MessageNode():
         self.sender = sender
         self.receiver = receiver
 
-    def get_output(self):
+    def get_output(self, sending):
         if self.msg_type == 'text':
             msg = try_decode(self.msg) + '\n'
-            return standard_output(self.sender, self.timestamp), msg
+            return standard_output(self.sender, self.receiver, self.timestamp, sending), msg
         elif self.msg_type == 'pic':
-            try:
-                msg = tk.PhotoImage(data=self.msg).subsample(2, 2)
-            except:
-                if file_exist(self.msg):
-                    msg = tk.PhotoImage(data=open(self.msg, 'rb').read()).subsample(2, 2)
-                else:
-                    msg = None
-            return standard_output(self.sender, self.timestamp), msg
+            return standard_output(self.sender, self.receiver, self.timestamp, sending), self.msg
+        return None, None
 
     def __gt__(self, other):
         return self.timestamp > other.timestamp
@@ -38,11 +33,15 @@ def file_exist(path):
 def get_time()->str:
     return str(datetime.now().strftime("%H:%M:%S"))
 
-def standard_output(username, timestamp):
-    if isinstance(username, bytes): username = username.decode('utf-8')
+def standard_output(sender, receiver, timestamp, sending=False):
+    if isinstance(sender, bytes): username = sender.decode('utf-8')
+    if isinstance(receiver, bytes): receiver = sender.decode('utf-8')
     if isinstance(timestamp, bytes): timestamp = timestamp.decode('utf-8')
     timestamp = datetime.fromtimestamp(float(timestamp))
-    return f">>{username}    {timestamp.strftime('%H:%M:%S')}\n"
+    if sending:
+        return f"{sender} >> {receiver} [{timestamp.strftime('%H:%M:%S')}]\n"
+    else:
+        return f"{receiver} << {sender} [{timestamp.strftime('%H:%M:%S')}]\n"
 
 def receive_data(socket, _header_len=10, decode_flag=False)->bytes:
     try:
@@ -57,6 +56,7 @@ def receive_data(socket, _header_len=10, decode_flag=False)->bytes:
 
 
 def encode_header(data, _len=10)->bytes:
+    if isinstance(data, float): data = str(data)
     if isinstance(data, str): data = data.encode('utf-8')
     return f"{len(data) :< {_len}}".encode('utf-8')
 
