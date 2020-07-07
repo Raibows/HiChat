@@ -3,19 +3,20 @@ import errno
 import sys
 import time
 import threading
-from queue import Queue
+from queue import Queue, PriorityQueue
 from tools import *
 
 
 
 class TCPClient():
-    def __init__(self, messages:Queue, server_addr=('127.0.0.1', 5000), HEADER_LEN=10):
-        self.messages = messages
+    def __init__(self, server_addr=('127.0.0.1', 5000), HEADER_LEN=10):
+        self.send_queue = PriorityQueue()
         self.server_addr = server_addr
         self.HEADER_LEN = HEADER_LEN
         self.stop_signal = False
         self.password = None
         self.username = None
+        self.receive_queue = PriorityQueue()
 
     def connect_to_server(self):
         try:
@@ -24,6 +25,7 @@ class TCPClient():
             self.client.setblocking(False)
         except:
             return False
+        return True
 
     def register(self, username, password):
         if not self.connect_to_server(): return False
@@ -35,7 +37,7 @@ class TCPClient():
                 if res: break
             except:
                 continue
-        return eval(res)
+        return eval(res.decode('utf-8'))
 
     def login(self, username, password):
         if not self.connect_to_server(): return False
@@ -47,12 +49,26 @@ class TCPClient():
                 if res: break
             except:
                 continue
-        res = eval(res)
+        res = eval(res.decode('utf-8'))
         if res:
             self.username = username
             self.password = password
             return True
         else: return False
+
+    def search_user_exist(self, username):
+        if not self.connect_to_server(): return False
+        data = self.encode_message('None', 'search', username, str(time.time()))
+        self.client.send(data)
+        while True:
+            try:
+                res = receive_data(self.client)
+                if res: break
+            except:
+                continue
+        res = eval(res.decode('utf-8'))
+        return res
+
 
     def encode_message(self, receiver, msg_type, message, timestamp, username=None):
         if username is None: username = self.username
@@ -65,7 +81,7 @@ class TCPClient():
 
 
     def receive_msg(self):
-        time.sleep(3)
+        time.sleep(2)
         while True and not self.stop_signal:
             try:
                 while True:
@@ -78,8 +94,7 @@ class TCPClient():
                     msg_type = receive_data(self.client)
                     msg = receive_data(self.client)
                     timestamp = receive_data(self.client)
-                    if msg_type == 'text':
-                        print(standard_output(sender, msg, timestamp))
+                    self.receive_queue.put(MessageNode(msg_type, timestamp, msg, sender, receiver))
 
             except IOError as e:
                 if e.errno != errno.EAGAIN and e.errno != errno.EWOULDBLOCK:
@@ -94,14 +109,12 @@ class TCPClient():
 
     def send_msg(self):
         while True and not self.stop_signal:
-            if self.messages.empty(): continue
-            msg = self.messages.get()
-            receiver = msg[0]
-            msg = msg[1]
-            if msg and len(msg) > 0:
-                timestamp = str(time.time())
-                print(standard_output(self.username, msg, timestamp))
-                data = self.encode_message(receiver, 'text', msg, timestamp)
+            if self.send_queue.empty():
+                time.sleep(0.1)
+                continue
+            msg:MessageNode = self.send_queue.get()
+            if msg:
+                data = self.encode_message(msg.receiver, msg.msg_type, msg.msg, msg.timestamp)
                 self.client.send(data)
 
 

@@ -1,5 +1,10 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import filedialog, messagebox
+from tkinter.simpledialog import askstring
+from tkinter import ttk
+from client import TCPClient
+from queue import Queue, PriorityQueue
+
 
 class LoginPanel():
     def __init__(self):
@@ -7,6 +12,7 @@ class LoginPanel():
         self.root.title('登录')
         self.root.geometry('500x380+400+300')
         self.font = ("仿宋", 16, "bold")
+        self.client = TCPClient()
 
         # header
         self.header = tk.Canvas(self.root)
@@ -41,33 +47,38 @@ class LoginPanel():
         flag = True
         if account_len == 0 or password_len == 0:
             flag = False
-            messagebox.showerror(message='账户和密码不能为空')
+            messagebox.showerror(message='账户和密码不能为空', parent=self.root)
         elif account_len > 6:
             flag = False
-            messagebox.showerror(message='账户最多为6位')
+            messagebox.showerror(message='账户最多为6位', parent=self.root)
         elif password_len > 6:
             flag = False
-            messagebox.showerror(message='密码最多为6位')
+            messagebox.showerror(message='密码最多为6位', parent=self.root)
         return flag
 
     def btn_login_click_event(self):
-        if self.check_account_password(self.ent_account.get(), self.ent_password.get()):
-            messagebox.showinfo(message='登录成功！')
-
+        acc = self.ent_account.get()
+        pwd = self.ent_password.get()
+        if self.check_account_password(acc, pwd):
+            if self.client.login(acc, pwd):
+                messagebox.showinfo(message='登录成功！', parent=self.root)
+            else:
+                messagebox.showerror(message='密码错误！', parent=self.root)
 
     def btn_register_click_event(self):
-        register_window = RegisterPanel(self.root)
+        register_window = RegisterPanel(self.root, self.client)
         register_window.run()
 
     def run(self):
         self.root.mainloop()
 
 class RegisterPanel:
-    def __init__(self, window:tk.Tk):
+    def __init__(self, window:tk.Tk, client:TCPClient):
         self.root = tk.Toplevel(window)
         self.root.title('注册')
         self.root.geometry('450x350+400+200')
         self.font = ("仿宋", 16, "bold")
+        self.client = client
         tk.Label(self.root, text='注册', font=("仿宋", 22, "bold")).place(x=200, y=20)
 
         self.input = tk.Canvas(self.root, bg='#ffffff')
@@ -115,8 +126,11 @@ class RegisterPanel:
     def btn_register_click_event(self):
         acc, pwd = self.ent_account.get(), self.ent_password.get()
         if self.check(acc, pwd, self.ent_password_con.get()):
-            messagebox.showinfo(message='注册成功')
-            self.root.destroy()
+            if self.client.register(acc, pwd):
+                messagebox.showinfo(message='注册成功', parent=self.root)
+                self.root.destroy()
+            else:
+                messagebox.showerror(message='注册失败，换一个账号试试', parent=self.root)
 
     def btn_cancel_click_event(self):
         self.root.destroy()

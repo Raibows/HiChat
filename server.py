@@ -3,9 +3,13 @@ import select
 from tools import *
 from queue import Queue
 import threading
+import time
 
 class User():
     def __init__(self, username, password, register_date):
+        if isinstance(username, bytes): username = username.decode('utf-8')
+        if isinstance(password, bytes): password = password.decode('utf-8')
+        if isinstance(register_date, bytes): register_date = register_date.decode('utf-8')
         self.username = username
         self.password = password
         self.register_date = register_date
@@ -22,20 +26,27 @@ class TCPServer():
         self.clients_id = {}
         self.clients_sk = {}
         self.messages = Queue()
+        self.start_test()
+
+    def start_test(self):
+        for i in range(10):
+            i = str(i)
+            self.users[i] = User(i, i, None)
+
 
     def receive_msg(self, client:socket.socket):
-        sender = receive_data(client)
-        receiver = receive_data(client)
-        msg_type = receive_data(client)
+        sender = receive_data(client, decode_flag=True)
+        receiver = receive_data(client, decode_flag=True)
+        msg_type = receive_data(client, decode_flag=True)
         msg = receive_data(client)
-        timestamp = receive_data(client)
+        timestamp = receive_data(client, decode_flag=True)
         return (msg_type, sender, receiver, msg, timestamp)
 
     def encode_msg(self, msg:tuple)->bytes:
         msg_type = msg[0].encode('utf-8')
         sender = msg[1].encode('utf-8')
         receiver = msg[2].encode('utf-8')
-        message = msg[3].encode('utf-8')
+        message = try_encode(msg[3])
         timestamp = msg[4].encode('utf-8')
         data = encode_header(sender) + sender + encode_header(receiver) + receiver + \
         encode_header(msg_type) + msg_type + encode_header(message) + message + encode_header(timestamp) + timestamp
@@ -49,15 +60,17 @@ class TCPServer():
                 if data[2] not in self.users: continue # receiver not exits
                 if data[2] not in self.clients_id: # receiver offline
                     self.messages.put(data)
+                    time.sleep(0.8)
                     continue
                 self.clients_id[data[2]].send(self.encode_msg(data))
+            else: time.sleep(0.5)
 
     def handle_register(self, client_sk:socket.socket, data):
         if data[1] in self.users:
             res = 'False'
             print(f"{get_time()} New Register failed from {client_sk.getsockname()} username {data[1]}")
         else:
-            self.users[data[1]] = User(data[1], data[3], data[4])
+            self.users[data[1]] = User(data[1], data[3].decode('utf-8'), data[4])
             self.clients_id[data[1]] = client_sk
             self.clients_sk[client_sk] = data[1]
             self.sockets_list.append(client_sk)
@@ -71,12 +84,20 @@ class TCPServer():
         if data[1] not in self.users:
             res = 'False'
             print(f"{get_time()} Login failed from {client_sk.getsockname()} username {data[1]}")
-        elif data[3] == self.users[data[1]].password:
+        elif data[3].decode('utf-8') == self.users[data[1]].password:
             res = 'True'
             self.clients_id[data[1]] = client_sk
             self.clients_sk[client_sk] = data[1]
             self.sockets_list.append(client_sk)
             print(f"{get_time()} Login success from {client_sk.getsockname()} username {data[1]}")
+        res = encode_header(res) + res.encode('utf-8')
+        client_sk.send(res)
+
+    def handle_search(self, client_sk: socket.socket, data):
+        username = data[3].decode('utf-8')
+        if username in self.users:
+            res = 'True'
+        else: res = 'False'
         res = encode_header(res) + res.encode('utf-8')
         client_sk.send(res)
 
@@ -94,15 +115,17 @@ class TCPServer():
                     elif data[0] == 'login':
                        self.handle_login(client_sk, data)
                 else:
-                    msg = self.receive_msg(sk)
-                    if None in msg:
+                    data = self.receive_msg(sk)
+                    if None in data:
                         print(f"{get_time()} Closed connection from {sk.getsockname()}")
                         self.sockets_list.remove(sk)
                         del self.clients_id[self.clients_sk[sk]]
                         del self.clients_sk[sk]
+                    elif data[0] == 'search':
+                        self.handle_search(sk, data)
                     else:
-                        print(f"{get_time()} Received {msg}")
-                        self.messages.put(msg)
+                        print(f"{get_time()} Received {data}")
+                        self.messages.put(data)
 
             for sk in exception_sockets:
                 self.sockets_list.remove(sk)
