@@ -33,6 +33,7 @@ class TCPClient():
         return True
 
     def register(self, username, password):
+        self.connect_to_server()
         data = self.encode_message('None', 'register', password, str(time.time()), username)
         self.client.send(data)
         while True:
@@ -41,9 +42,11 @@ class TCPClient():
                 if res: break
             except:
                 continue
+        self.client.close()
         return eval(res.decode('utf-8'))
 
     def login(self, username, password):
+        self.connect_to_server()
         data = self.encode_message('None', 'login', password, str(time.time()), username)
         self.client.send(data)
         while True:
@@ -104,7 +107,7 @@ class TCPClient():
                     msg = receive_data(self.client)
                     timestamp = receive_data(self.client, decode_flag=True)
                     # self.output_func(MessageNode(msg_type, timestamp, msg, sender, receiver))
-                    # print(sender, receiver, msg_type, msg, timestamp)
+                    print(sender, receiver, msg_type, msg, timestamp)
                     self.receive_queue.put(MessageNode(msg_type, timestamp, msg, sender, receiver))
 
 

@@ -3,29 +3,29 @@ import pickle
 from PIL import Image
 from tools import *
 
-def add_image(img):
-    text.config(state=tk.NORMAL)
-    text.image_create(tk.END, image = img) # Example 1
-    # text.window_create(tk.END, window=tk.Label(text, image=img))
-    text.insert(tk.END, '\n')
-    text.config(state=tk.DISABLED)
-
-root = tk.Tk()
-
-text = tk.Text(root, state=tk.DISABLED)
-text.pack(padx = 20, pady = 20)
-
-tk.Button(root, text = "Insert", command = lambda :add_image(photo)).pack()
-
-img = open("pics/welcome.png", 'rb').read()
-print(img.decode('utf-8'))
-photo = tk.PhotoImage(data=img)
-# print(pickle.dumps(img))
-
-root.mainloop()
-
-x = tk.BooleanVar(root, value=False)
-print(x)
+# def add_image(img):
+#     text.config(state=tk.NORMAL)
+#     text.image_create(tk.END, image = img) # Example 1
+#     # text.window_create(tk.END, window=tk.Label(text, image=img))
+#     text.insert(tk.END, '\n')
+#     text.config(state=tk.DISABLED)
+#
+# root = tk.Tk()
+#
+# text = tk.Text(root, state=tk.DISABLED)
+# text.pack(padx = 20, pady = 20)
+#
+# tk.Button(root, text = "Insert", command = lambda :add_image(photo)).pack()
+#
+# img = open("pics/welcome.png", 'rb').read()
+# print(img.decode('utf-8'))
+# photo = tk.PhotoImage(data=img)
+# # print(pickle.dumps(img))
+#
+# root.mainloop()
+#
+# x = tk.BooleanVar(root, value=False)
+# print(x)
 
 
 # class PageCanvas1(tk.Toplevel):
@@ -59,5 +59,7 @@ print(x)
 
 if __name__ == "__main__":
     # root = tk.Tk()
-
+    x = {
+        '1':[[1, 2, 3], ]
+    }
     pass

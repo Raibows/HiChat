@@ -69,28 +69,26 @@ class TCPServer():
     def handle_register(self, client_sk:socket.socket, data):
         if data[1] in self.users:
             res = 'False'
-            print(f"{get_time()} New Register failed from {client_sk.getsockname()} username {data[1]}")
+            print(f"{get_time()} New Register failed from {client_sk.getpeername()} username {data[1]}")
         else:
             self.users[data[1]] = User(data[1], data[3].decode('utf-8'), data[4])
-            self.clients_id[data[1]] = client_sk
-            self.clients_sk[client_sk] = data[1]
-            self.sockets_list.append(client_sk)
-            print(f"{get_time()} New Register success from {client_sk.getsockname()} username {data[1]}")
+            print(f"{get_time()} New Register success from {client_sk.getpeername()} username {data[1]}")
             res = 'True'
         res = encode_header(res) + res.encode('utf-8')
         client_sk.send(res)
+        client_sk.close()
 
     def handle_login(self, client_sk:socket.socket, data):
         res = 'False'
         if data[1] not in self.users:
             res = 'False'
-            print(f"{get_time()} Login failed from {client_sk.getsockname()} username {data[1]}")
+            print(f"{get_time()} Login failed from {client_sk.getpeername()} username {data[1]}")
         elif data[3].decode('utf-8') == self.users[data[1]].password:
             res = 'True'
             self.clients_id[data[1]] = client_sk
             self.clients_sk[client_sk] = data[1]
             self.sockets_list.append(client_sk)
-            print(f"{get_time()} Login success from {client_sk.getsockname()} username {data[1]}")
+            print(f"{get_time()} Login success from {client_sk.getpeername()} username {data[1]}")
         res = encode_header(res) + res.encode('utf-8')
         client_sk.send(res)
 
@@ -100,7 +98,7 @@ class TCPServer():
         if username in self.users:
             res = 'True'
         else: res = 'False'
-        print(f"{get_time()} Search {res} from {client_sk.getsockname()} username {data[1]}")
+        print(f"{get_time()} Search {res} from {client_sk.getpeername()} username {data[1]}")
         res = encode_header(res) + res.encode('utf-8')
         client_sk.send(res)
 
@@ -122,10 +120,14 @@ class TCPServer():
                 else:
                     data = self.receive_msg(sk)
                     if None in data:
-                        print(f"{get_time()} Closed connection from {sk.getsockname()}")
+                        print(f"{get_time()} Closed connection from {sk.getpeername()}")
                         self.sockets_list.remove(sk)
                         del self.clients_id[self.clients_sk[sk]]
                         del self.clients_sk[sk]
+                    # elif data[0] == 'register':
+                    #     self.handle_register(sk, data)
+                    # elif data[0] == 'login':
+                    #    self.handle_login(sk, data)
                     elif data[0] == 'search':
                         self.handle_search(sk, data)
                     else:
