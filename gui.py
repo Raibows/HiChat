@@ -304,10 +304,8 @@ class LoginPanel():
         if self.check_account_password(acc, pwd):
             if self.client.login(acc, pwd):
                 messagebox.showinfo(message='登录成功！', parent=self.root)
-                # main_window = MainPanel(self.client.username, self.client, self.root)
                 self.root.quit()
                 self.root.destroy()
-                # main_window.run()
             else:
                 messagebox.showerror(message='密码错误！', parent=self.root)
 
@@ -325,6 +323,7 @@ class RegisterPanel():
         self.root.resizable(0, 0)
         self.root.attributes("-toolwindow", 1)
         self.root.wm_attributes("-topmost", 1)
+        self.root.protocol("WM_DELETE_WINDOW", self.btn_cancel_click_event)
         self.root.title('注册')
         self.root.geometry('450x350+400+200')
         self.font = ("仿宋", 16, "bold")
@@ -381,6 +380,7 @@ class RegisterPanel():
                 messagebox.showerror(message='注册失败，换一个账号试试', parent=self.root)
 
     def btn_cancel_click_event(self):
+        self.root.quit()
         self.root.destroy()
 
     def run(self):

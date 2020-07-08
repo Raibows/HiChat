@@ -4,6 +4,8 @@ from tools import *
 from queue import Queue
 import threading
 import time
+import sys
+import pickle
 
 class User():
     def __init__(self, username, password, register_date):
@@ -26,12 +28,6 @@ class TCPServer():
         self.clients_id = {}
         self.clients_sk = {}
         self.messages = Queue()
-        self.start_test()
-
-    def start_test(self):
-        for i in range(10):
-            i = str(i)
-            self.users[i] = User(i, i, None)
 
 
     def receive_msg(self, client:socket.socket):
@@ -140,12 +136,42 @@ class TCPServer():
                 del self.clients_id[self.clients_sk[sk]]
                 del self.clients_sk[sk]
 
+    def write_data(self):
+        print(f"{get_time()} Have written user data to server/log.dat")
+        if not file_exist('server'): os.mkdir('server')
+        with open('server/log.dat', 'wb') as file:
+            pickle.dump(self.users, file)
+
+    def load_data(self):
+        if file_exist('server/log.dat'):
+            with open('server/log.dat', 'rb') as file:
+                self.users = pickle.load(file)
+            print(f"{get_time()} Have loaded user data")
+            return True
+        else: return False
+
+    def generate_test_data(self):
+        print(f"{get_time()} Generated test users from i=0 to 9 account=useri password=useri")
+        for i in range(10):
+            i = str(i)
+            self.users[i] = User('user'+i, 'user'+i, time.time())
+
     def run(self):
+        if not self.load_data(): self.generate_test_data()
         listen_thread = threading.Thread(target=self.listening)
+        listen_thread.daemon = True
         listen_thread.start()
         broadcast_thread = threading.Thread(target=self.broadcast)
+        broadcast_thread.daemon = True
         broadcast_thread.start()
-        listen_thread.join()
+
+        try:
+            while True:
+                time.sleep(1)
+        except:
+            self.write_data()
+            sys.exit()
+
 
 
 
