@@ -120,10 +120,6 @@ class TCPServer():
                         self.sockets_list.remove(sk)
                         del self.clients_id[self.clients_sk[sk]]
                         del self.clients_sk[sk]
-                    # elif data[0] == 'register':
-                    #     self.handle_register(sk, data)
-                    # elif data[0] == 'login':
-                    #    self.handle_login(sk, data)
                     elif data[0] == 'search':
                         self.handle_search(sk, data)
                     else:
@@ -154,7 +150,7 @@ class TCPServer():
         print(f"{get_time()} Generated test users from i=0 to 9 account=useri password=useri")
         for i in range(10):
             i = str(i)
-            self.users[i] = User('user'+i, 'user'+i, time.time())
+            self.users['user'+i] = User('user'+i, 'user'+i, time.time())
 
     def run(self):
         if not self.load_data(): self.generate_test_data()

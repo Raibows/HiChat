@@ -106,8 +106,7 @@ class TCPClient():
                     msg_type = receive_data(self.client, decode_flag=True)
                     msg = receive_data(self.client)
                     timestamp = receive_data(self.client, decode_flag=True)
-                    # self.output_func(MessageNode(msg_type, timestamp, msg, sender, receiver))
-                    print(sender, receiver, msg_type, msg, timestamp)
+                    # print(sender, receiver, msg_type, msg, timestamp)
                     self.receive_queue.put(MessageNode(msg_type, timestamp, msg, sender, receiver))
 
 
@@ -125,7 +124,7 @@ class TCPClient():
     def send_msg(self):
         while True and not self.stop_signal:
             if self.send_queue.empty():
-                time.sleep(0.1)
+                time.sleep(0.3)
                 continue
             msg:MessageNode = self.send_queue.get()
             if msg:

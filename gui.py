@@ -240,7 +240,6 @@ class MainPanel():
         self.client.stop_signal = True
 
 
-
 class LoginPanel():
     def __init__(self, client, parent):
         self.root = tk.Toplevel(parent)
