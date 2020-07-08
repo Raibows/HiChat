@@ -78,7 +78,7 @@ class MainPanel():
         self.output.tag_config('receiving', background='gray', foreground='white')
         self.output_scroll_bar = tk.Scrollbar(self.frame_chat, command=self.output.yview, orient='vertical')
         self.output_scroll_bar.pack(side='right', fill=tk.Y)
-        self.output.config(yscrollcommand=self.output_scroll_bar.set)
+        self.output.config(yscrollcommand=self.output_scroll_bar.set, state=tk.DISABLED)
 
 
 
@@ -195,8 +195,9 @@ class MainPanel():
         if self.chat_with == '':
             messagebox.showerror(message='请先指定联系人，再发送消息', parent=self.root)
             return None
-        text_content = text.get('1.0', tk.END).strip('\n')
+        text_content = text.get('1.0', tk.END).strip('\n').strip(' ')
         text.delete('1.0', tk.END)
+        if len(text_content) == 0: return None
         temp = MessageNode('text', time.time(), text_content, self.username, self.chat_with)
         self.output_one_message(temp, sending=True)
         self.client.send_queue.put(temp)
@@ -220,8 +221,14 @@ class MainPanel():
         self.root.after(300, self.run_output)
 
     def run(self):
+        self.root.withdraw()
         lg_window = LoginPanel(self.client, self.root)
         lg_window.run()
+        self.root.deiconify()
+        if self.client.username == None:
+            self.root.quit()
+            self.root.destroy()
+            return None
         self.username = self.client.username
         self.read_groups_data()
         self.update_groups()
@@ -240,6 +247,7 @@ class LoginPanel():
         self.root.resizable(0, 0)
         self.root.attributes("-toolwindow", 1)
         self.root.wm_attributes("-topmost", 1)
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.root.title('登录')
         self.root.geometry('500x380+400+300')
         self.font = ("仿宋", 16, "bold")
@@ -270,6 +278,10 @@ class LoginPanel():
         self.lab_password.place(x=90, y=90)
         self.ent_password = tk.Entry(self.input, font=self.font, show='*')
         self.ent_password.place(x=160, y=90)
+
+    def on_closing(self):
+        self.root.quit()
+        self.root.destroy()
 
     def check_account_password(self, account, password):
         account_len = len(account)
