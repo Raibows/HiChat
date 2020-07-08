@@ -8,6 +8,8 @@ from tools import *
 import time
 import threading
 import copy
+import os
+import pickle
 
 
 
@@ -24,6 +26,7 @@ class MainPanel():
         self.client = TCPClient()
         self.receive_queue = PriorityQueue()
         self.imgs = []
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
 
 
@@ -49,8 +52,8 @@ class MainPanel():
 
         self.groups = {}
         self.friend_users = set()
-        self.create_new_group('default')
-        self.update_groups()
+
+        # self.update_groups()
 
 
 
@@ -91,12 +94,33 @@ class MainPanel():
         self.btn_user_input_browse.place(x=470, y=130)
 
 
+    def read_groups_data(self):
+        if file_exist(self.username+'/log.dat'):
+            with open(self.username + '/log.dat', 'rb') as file:
+                self.groups = pickle.load(file)
+        else: self.create_new_group('default')
+
+    def on_closing(self):
+        for key, val in self.groups.items():
+            self.groups[key][1] = None
+            self.groups[key][2] = None
+        if not file_exist(self.username): os.mkdir(self.username)
+        with open(self.username+'/log.dat', 'wb') as file:
+            pickle.dump(self.groups, file)
+        self.root.quit()
+        self.root.destroy()
+
+
     def click_user_to_chat_event(self, event):
         widget = event.widget
         try:
             index = int(widget.curselection()[0])
         except:
             return None
+        # if self.chat_with is not None and len(self.chat_with) > 0:
+        #     self.widgets_clones[self.chat_with] = clone(self.output)
+        #     self.output.delete('1.0', 'end')
+        #     self.output.update()
         self.chat_with = widget.get(index)
         self.chat_with_label.config(text=self.chat_with)
 
@@ -126,7 +150,11 @@ class MainPanel():
         # self.groups['default'][1].pack()
         for key, val in self.groups.items():
             # if key == 'default': continue
-            val[1].pack(fill='both')
+            if val[1] == None:
+                temp = val[0].copy()
+                self.create_new_group(key)
+                self.groups[key][0] = temp
+            self.groups[key][1].pack(fill='both')
 
     def btn_add_user_event(self):
         user_window = AddUserPanel(self.root, self.groups, self.client)
@@ -195,6 +223,8 @@ class MainPanel():
         lg_window = LoginPanel(self.client, self.root)
         lg_window.run()
         self.username = self.client.username
+        self.read_groups_data()
+        self.update_groups()
         # print(self.username)
         self.hello_label.config(text=f'Hello, {self.username}')
         self.client.run(self.receive_queue)
@@ -372,18 +402,31 @@ class GroupManagePanel():
 
         self.frame = tk.Frame(self.root)
         self.frame.place(x=0, y=400, width=600, height=100)
-        self.btn_ok = tk.Button(self.frame, bg='green', text='移动', command=self.btn_ok_event)
+        self.btn_ok = tk.Button(self.frame, bg='green', text='移动好友', command=self.btn_ok_event)
         self.group_choice = ttk.Combobox(self.frame, values=list(groups.keys()), state='readonly', )
         self.group_choice.current(list(groups.keys()).index('default'))
-        self.btn_new = tk.Button(self.frame, bg='#FFFF00', text='新建', command=self.btn_new_event)
+        self.btn_new = tk.Button(self.frame, bg='#FFFF00', text='新建群组', command=self.btn_new_event)
+        self.btn_delete = tk.Button(self.frame, bg='red', text='删除好友', command=self.btn_delete_event)
+        self.btn_edit = tk.Button(self.frame, bg='white', text='修改名称', command=self.btn_edit_group_name)
 
-        self.btn_ok.place(x=100, y=30, width=50)
-        self.group_choice.place(x=220, y=30)
-        self.btn_new.place(x=470, y=30, width=50)
+        self.btn_ok.pack(side='left')
+        self.btn_new.pack(side='left')
+        self.btn_edit.pack(side='left')
+        self.btn_delete.pack(side='left')
+        self.group_choice.pack(side='left')
+        # self.btn_ok.place(x=10, y=30, width=80)
+        # self.group_choice.place(x=100, y=30, width=180)
+        # self.btn_new.place(x=320, y=30, width=80)
+        # self.btn_edit.place()
+        # self.btn_delete.place(x=460, y=30, width=80)
 
         self.groups = groups
         self.vars = {}
         self.show()
+
+    def create_group_delete_button(self, group_name):
+        return tk.Button(self.canvas_frame, bg='#FFFF99', text=f"{group_name}", font=self.font,
+                         width=8, command=lambda :self.btn_delete_group_event(group_name))
 
     def show(self):
         self.group_choice.config(values=list(self.groups.keys()))
@@ -391,9 +434,8 @@ class GroupManagePanel():
         for widget in self.canvas_frame.winfo_children():
             widget.destroy()
         for row, (key, val) in enumerate(self.groups.items()):
-            t = tk.Label(self.canvas_frame, bg='#FFFF99', text=f"{key}", font=self.font,
-                         width=8)  # .pack(side='left') #.place(x=0, y=50*row)
-            t.grid(row=row, column=0)
+            self.create_group_delete_button(key).grid(row=row, column=0)  # .pack(side='left') #.place(x=0, y=50*row)
+
             tk.Label(self.canvas_frame, text=f"{len(val[0])}", font=self.font, width=8).grid(row=row,
                                                                                              column=1)  # .pack(side='left', anchor='nw') #.place(x=100, y=50*row)
             self.vars[key] = [tk.BooleanVar(self.canvas, value=False) for _ in val[0]]
@@ -407,6 +449,49 @@ class GroupManagePanel():
         for i in range(len(temp)):
             temp[i] += self.canvas_frame.bbox('all')[i]
         self.canvas.config(scrollregion=temp)
+        self.parent.update_groups()
+
+    def btn_edit_group_name(self):
+        g = self.group_choice.get()
+        if g == 'default':
+            messagebox.showerror(message='默认群组无法修改', parent=self.root)
+            return None
+        ng = askstring(title='Edit Group', prompt='请输入新用户组名称', parent=self.root)
+        if ng == None: return None
+
+        temp = self.groups[g][0].copy()
+        self.groups[g][1].destroy()
+        if isinstance(self.groups[g][2], tk.Listbox): self.groups[g][2].destroy()
+        del self.groups[g]
+        self.parent.create_new_group(ng)
+        self.groups[ng][0] = temp
+        self.show()
+
+
+    def btn_delete_group_event(self, key):
+        if key == 'default':
+            messagebox.showerror(message='默认群组无法删除', parent=self.root)
+            return None
+        if len(self.groups[key][0]) > 0:
+            messagebox.showerror(message='请先移动好友，再删除群组', parent=self.root)
+            return None
+        self.groups[key][1].destroy()
+        if isinstance(self.groups[key][2], tk.Listbox): self.groups[key][2].destroy()
+        del self.groups[key]
+        self.show()
+
+    def btn_delete_event(self):
+        for key, val in self.vars.items():
+            idx = 0
+            for var in val:
+                if idx == len(val): break
+                if var.get():
+                    var.set(False)
+                    del self.groups[key][0][idx]
+                else:
+                    idx += 1
+        messagebox.showinfo(message='删除完毕', parent=self.root)
+        self.show()
 
     def btn_ok_event(self):
         g = self.group_choice.get()
@@ -505,7 +590,7 @@ class AddUserPanel():
                 messagebox.showinfo(message='添加成功', parent=self.root)
             else:
                 messagebox.showerror(message='该账户不存在', parent=self.root)
-
+        self.ent_account.delete(0, 'end')
     def quit(self):
         self.root.quit()
         self.root.destroy()

@@ -27,6 +27,15 @@ class MessageNode():
         return self.timestamp == other.timestamp
 
 
+def clone(widget):
+    parent = widget.nametowidget(widget.winfo_parent())
+    cls = widget.__class__
+
+    clone = cls(parent)
+    for key in widget.configure():
+        clone.configure({key: widget.cget(key)})
+    return clone
+
 def file_exist(path):
     return os.path.exists(path)
 
