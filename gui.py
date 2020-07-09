@@ -23,6 +23,8 @@ class MainPanel():
         self.root.resizable(0, 0)
         self.username = None
         self.chat_with = ''
+        self.chat_with_windows = {}
+        self.output = None
         self.client = TCPClient()
         self.receive_queue = PriorityQueue()
         self.imgs = []
@@ -32,12 +34,12 @@ class MainPanel():
 
 
         # header提示语
-        self.frame_header = tk.Frame(self.root, bg='#FFFFCC')
+        self.frame_header = tk.Frame(self.root, bg='white')
         self.frame_header.place(x=0, y=0, width=900, height=30)
-        self.hello_label = tk.Label(self.frame_header, text='', font=('仿宋', 16))
-        self.hello_label.place(x=680, y=5)
-        self.chat_with_label = tk.Label(self.frame_header, text=f'{self.chat_with}', font=('仿宋', 16))
-        self.chat_with_label.place(x=300, y=5)
+        self.hello_label = tk.Label(self.frame_header, text='', font=('仿宋', 20))
+        self.hello_label.place(x=700, y=0)
+        self.chat_with_label = tk.Label(self.frame_header, text=f'{self.chat_with}', font=('仿宋', 20), bg='#66FFFF')
+        self.chat_with_label.place(x=240, y=0, width=150)
 
 
         # 好友栏
@@ -69,30 +71,43 @@ class MainPanel():
         self.btn_add_group.place(x=120, y=0)
 
 
-
+        # 聊天框
         self.frame_chat = tk.Frame(self.root, bg='white')
         self.frame_chat.place(x=0, y=30, width=650, height=520)
-        self.output = tk.Text(self.frame_chat, state=tk.NORMAL, font=('仿宋', 20))
-        self.output.place(x=0, y=0, width=650, height=520)
-        self.output.tag_config('sending', background="#0B5FA5", foreground="white")
-        self.output.tag_config('receiving', background='gray', foreground='white')
-        self.output_scroll_bar = tk.Scrollbar(self.frame_chat, command=self.output.yview, orient='vertical')
+        # self.output = tk.Text(self.frame_chat, state=tk.NORMAL, font=('仿宋', 20))
+        # self.output.place(x=0, y=0, width=650, height=520)
+        # self.output.tag_config('sending', background="#0B5FA5", foreground="white")
+        # self.output.tag_config('receiving', background='gray', foreground='white')
+        self.output_scroll_bar = tk.Scrollbar(self.frame_chat, orient='vertical')
         self.output_scroll_bar.pack(side='right', fill=tk.Y)
-        self.output.config(yscrollcommand=self.output_scroll_bar.set, state=tk.DISABLED)
+        # self.output.config(yscrollcommand=self.output_scroll_bar.set, state=tk.DISABLED)
 
 
-
+        # 输入框
         self.frame_user_input = tk.Frame(self.root)
         self.frame_user_input.place(x=0, y=520, width=650, height=180)
         self.user_input = tk.Text(self.frame_user_input, font=('仿宋', 18))
-        self.user_input.place(x=0, y=0, width=635, height=130)
+        self.user_input.place(x=0, y=0, width=630, height=130)
+
         self.btn_user_input_ok = tk.Button(self.frame_user_input, text='发送', font=('仿宋', 18), bg='#99FF99',
                                            command=lambda :self.btn_get_text_data_event(self.user_input))
         self.btn_user_input_ok.place(x=560, y=130)
+
         self.btn_user_input_browse = tk.Button(self.frame_user_input, text='文件', font=('仿宋', 18), bg='#66FFFF',
                                                command=self.ask_open_file)
         self.btn_user_input_browse.place(x=470, y=130)
 
+        self.btn_clear_output = tk.Button(self.frame_user_input, text='清屏', font=('仿宋', 18), bg='#FF6633',
+                                               command=self.btn_clear_output_event)
+        self.btn_clear_output.place(x=380, y=130)
+
+
+    def create_chat_with_text_window(self, usr):
+        if usr not in self.chat_with_windows:
+            self.chat_with_windows[usr] = tk.Text(self.frame_chat, state=tk.DISABLED, font=('仿宋', 20), yscrollcommand=self.output_scroll_bar.set)
+            self.chat_with_windows[usr].place(x=0, y=0, width=630, height=520)
+            self.chat_with_windows[usr].tag_config('sending', background="#0B5FA5", foreground="white")
+            self.chat_with_windows[usr].tag_config('receiving', background='gray', foreground='white')
 
     def read_groups_data(self):
         if file_exist(self.username+'/log.dat'):
@@ -110,23 +125,25 @@ class MainPanel():
         self.root.quit()
         self.root.destroy()
 
-
     def click_user_to_chat_event(self, event):
         widget = event.widget
         try:
             index = int(widget.curselection()[0])
         except:
             return None
-        # if self.chat_with is not None and len(self.chat_with) > 0:
-        #     self.widgets_clones[self.chat_with] = clone(self.output)
-        #     self.output.delete('1.0', 'end')
-        #     self.output.update()
-        self.chat_with = widget.get(index)
+        temp = widget.get(index)
+        if self.chat_with != temp:
+            self.output = self.chat_with_windows[temp]
+            self.output.config(state=tk.DISABLED, yscrollcommand=self.output_scroll_bar.set)
+            self.output_scroll_bar.config(command=self.output.yview)
+            self.output.yview(tk.END)
+            self.output.tkraise()
+        self.chat_with = temp
         self.chat_with_label.config(text=self.chat_with)
 
     def create_new_group(self, group_name: str):
         frm = tk.Frame(self.frame_right_bar)
-        btn = tk.Button(frm, text=group_name, width=23, height=2, bg='green',
+        btn = tk.Button(frm, text=group_name, width=23, height=2, bg='#FFFF99',
                         command=lambda: self.btn_group_show_friends(group_name))
         btn.pack()
         self.groups[group_name] = [[], frm, 0]
@@ -149,7 +166,7 @@ class MainPanel():
         self.update_friend_users()
         # self.groups['default'][1].pack()
         for key, val in self.groups.items():
-            # if key == 'default': continue
+            [self.create_chat_with_text_window(x) for x in val[0]]
             if val[1] == None:
                 temp = val[0].copy()
                 self.create_new_group(key)
@@ -158,7 +175,7 @@ class MainPanel():
 
     def btn_add_user_event(self):
         user_window = AddUserPanel(self.root, self.groups, self.client)
-        self.update_friend_users()
+        self.update_groups()
 
     def btn_add_group_event(self):
         for g, val in self.groups.items():
@@ -167,8 +184,15 @@ class MainPanel():
         group_window.run()
         self.update_groups()
 
+    def btn_clear_output_event(self):
+        if isinstance(self.output, tk.Text):
+            self.output.config(state=tk.NORMAL)
+            self.output.delete('1.0', tk.END)
+            self.output.config(state=tk.DISABLED)
+
     def output_one_message(self, data:MessageNode, sending=False):
         header, msg = data.get_output(sending)
+        self.output = self.chat_with_windows[data.sender]
         self.output.config(state=tk.NORMAL)
         if sending: self.output.insert(tk.END, header, 'sending')
         else: self.output.insert(tk.END, header, 'receiving')
@@ -232,7 +256,8 @@ class MainPanel():
         self.username = self.client.username
         self.read_groups_data()
         self.update_groups()
-        # print(self.username)
+
+
         self.hello_label.config(text=f'Hello, {self.username}')
         self.client.run(self.receive_queue)
         self.root.after(300, self.run_output)
@@ -406,18 +431,18 @@ class GroupManagePanel():
         self.vbar.pack(side=tk.LEFT, fill=tk.Y)
         self.vbar.config(command=self.canvas.yview)
         self.canvas.config(xscrollcommand=self.hbar.set, yscrollcommand=self.vbar.set)
-        self.canvas_frame = tk.Frame(self.canvas, bg='green')
+        self.canvas_frame = tk.Frame(self.canvas, bg='#00CC66')
         self.canvas_frame.place(x=100, y=100, anchor='nw')
 
         self.canvas.create_window(30, 15, window=self.canvas_frame, anchor='nw')
 
         self.frame = tk.Frame(self.root)
         self.frame.place(x=0, y=400, width=600, height=100)
-        self.btn_ok = tk.Button(self.frame, bg='green', text='移动好友', command=self.btn_ok_event)
+        self.btn_ok = tk.Button(self.frame, bg='#00CC66', text='移动好友', command=self.btn_ok_event)
         self.group_choice = ttk.Combobox(self.frame, values=list(groups.keys()), state='readonly', )
         self.group_choice.current(list(groups.keys()).index('default'))
         self.btn_new = tk.Button(self.frame, bg='#FFFF00', text='新建群组', command=self.btn_new_event)
-        self.btn_delete = tk.Button(self.frame, bg='red', text='删除好友', command=self.btn_delete_event)
+        self.btn_delete = tk.Button(self.frame, bg='#FF6633', text='删除好友', command=self.btn_delete_event)
         self.btn_edit = tk.Button(self.frame, bg='white', text='修改名称', command=self.btn_edit_group_name)
 
         self.btn_ok.pack(side='left')
@@ -477,7 +502,6 @@ class GroupManagePanel():
         self.parent.create_new_group(ng)
         self.groups[ng][0] = temp
         self.show()
-
 
     def btn_delete_group_event(self, key):
         if key == 'default':
@@ -570,19 +594,13 @@ class AddUserPanel():
         self.lb_groups.grid(row=1, column=0)
         self.group_choice.grid(row=1, column=1)
 
-        self.btn_ok = tk.Button(self.root, text='提交', font=self.font, bg='green', command=self.btn_ok_event)
-        self.btn_cancel = tk.Button(self.root, text='取消', font=self.font, bg='red', command=self.quit)
+        self.btn_ok = tk.Button(self.root, text='提交', font=self.font, bg='#00CC66', command=self.btn_ok_event)
+        self.btn_cancel = tk.Button(self.root, text='取消', font=self.font, bg='#FF6633', command=self.quit)
         self.btn_ok.place(x=110, y=100)
         self.btn_cancel.place(x=210, y=100)
 
         self.root.mainloop()
 
-        # g = 'default'
-        # for u in range(100000, 100015):
-        #     u = str(u)
-        #     if u in self.user_accounts: continue
-        #     self.user_accounts.add(u)
-        #     self.groups[g][0].append(u)
 
     def btn_ok_event(self):
         u, g = self.ent_account.get(), self.group_choice.get()
@@ -609,6 +627,6 @@ class AddUserPanel():
 
 
 if __name__ == '__main__':
-    # t = LoginPanel()
-    # t.run()
+    main_window = MainPanel()
+    main_window.run()
     pass
