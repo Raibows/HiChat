@@ -164,8 +164,9 @@ class MainPanel():
         if self.chat_with == '':
             messagebox.showerror(message='请先指定联系人，再发送消息', parent=self.root)
             return None
-        file = filedialog.askopenfile(mode='rb', ).read()
+        file = filedialog.askopenfile(mode='rb', )
         if file == None: return None
+        file = file.read()
         temp = MessageNode('pic', time.time(), file, self.username, self.chat_with)
         self.output_one_message(temp, sending=True)
         self.client.send_queue.put(temp)
