@@ -58,7 +58,7 @@ class TCPServer():
                     self.messages.put(data)
                     time.sleep(0.8)
                     continue
-                print(f"{get_time()} Broadcast {data}")
+                print(f"{get_time()} Broadcast from {data[1]} to {data[2]} msg_type {data[0]} msg{data[3][:10]}")
                 self.clients_id[data[2]].send(self.encode_msg(data))
             else: time.sleep(0.5)
 
@@ -123,7 +123,7 @@ class TCPServer():
                     elif data[0] == 'search':
                         self.handle_search(sk, data)
                     else:
-                        print(f"{get_time()} Received {data}")
+                        print(f"{get_time()} Received from {data[1]} to {data[2]} msg_type {data[0]} msg{data[3][:10]}")
                         self.messages.put(data)
 
 
