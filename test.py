@@ -61,33 +61,6 @@ from tools import *
 
 
 if __name__ == "__main__":
-    test = []
-    root = tk.Tk()
-    root.geometry('800x500+300+150')
-    frm = tk.Frame(root, bg='green')
-    frm.place(x=100, y=100, width=700, height=400)
-    output = tk.Text(frm, state=tk.NORMAL, font=('仿宋', 20))
-    output.place(x=0, y=0, width=700, height=350)
-    output_scroll_bar = tk.Scrollbar(frm, command=output.yview, orient='vertical')
-    output_scroll_bar.pack(side='right', fill=tk.Y)
-    output.config(yscrollcommand=output_scroll_bar.set)
-
-    other = tk.Text(frm, state=tk.NORMAL, font=('仿宋', 20), bg='red')
-    other.place(x=0, y=0, width=700, height=350)
-    output_scroll_bar.config(command=other.yview, orient='vertical')
-    other.config(yscrollcommand=output_scroll_bar.set)
-    # test.append(output)
-
-    output.config(yscrollcommand=output_scroll_bar.set, bg='white')
-    output_scroll_bar.config(command=output.yview)
-    output.tkraise()
-
-    other.tkraise()
-
-
-
-    root.mainloop()
-    x = {
-        '1':[[1, 2, 3], ]
-    }
+    x ='temp  未读0'
+    print(x.split('  未读'))
     pass

@@ -54,8 +54,8 @@ class MainPanel():
 
         self.groups = {}
         self.friend_users = set()
+        self.unread_message_num = {}
 
-        # self.update_groups()
 
 
 
@@ -101,29 +101,11 @@ class MainPanel():
                                                command=self.btn_clear_output_event)
         self.btn_clear_output.place(x=380, y=130)
 
-
-    def create_chat_with_text_window(self, usr):
-        if usr not in self.chat_with_windows:
-            self.chat_with_windows[usr] = tk.Text(self.frame_chat, state=tk.DISABLED, font=('仿宋', 20), yscrollcommand=self.output_scroll_bar.set)
-            self.chat_with_windows[usr].place(x=0, y=0, width=630, height=520)
-            self.chat_with_windows[usr].tag_config('sending', background="#0B5FA5", foreground="white")
-            self.chat_with_windows[usr].tag_config('receiving', background='gray', foreground='white')
-
     def read_groups_data(self):
         if file_exist(self.username+'/log.dat'):
             with open(self.username + '/log.dat', 'rb') as file:
                 self.groups = pickle.load(file)
         else: self.create_new_group('default')
-
-    def on_closing(self):
-        for key, val in self.groups.items():
-            self.groups[key][1] = None
-            self.groups[key][2] = None
-        if not file_exist(self.username): os.mkdir(self.username)
-        with open(self.username+'/log.dat', 'wb') as file:
-            pickle.dump(self.groups, file)
-        self.root.quit()
-        self.root.destroy()
 
     def click_user_to_chat_event(self, event):
         widget = event.widget
@@ -131,7 +113,13 @@ class MainPanel():
             index = int(widget.curselection()[0])
         except:
             return None
-        temp = widget.get(index)
+        temp = widget.get(index).split('  未读')
+        if temp[1] != '0':
+            widget.delete(index)
+            widget.insert(index, f"{temp[0]}  未读0")
+            widget.select_set(index)
+        temp = temp[0]
+        self.unread_message_num[temp] = 0
         if self.chat_with != temp:
             self.output = self.chat_with_windows[temp]
             self.output.config(state=tk.DISABLED, yscrollcommand=self.output_scroll_bar.set)
@@ -141,20 +129,13 @@ class MainPanel():
         self.chat_with = temp
         self.chat_with_label.config(text=self.chat_with)
 
-    def create_new_group(self, group_name: str):
-        frm = tk.Frame(self.frame_right_bar)
-        btn = tk.Button(frm, text=group_name, width=23, height=2, bg='#FFFF99',
-                        command=lambda: self.btn_group_show_friends(group_name))
-        btn.pack()
-        self.groups[group_name] = [[], frm, 0]
-
     def btn_group_show_friends(self, group):
         group = self.groups[group]
         if group[2] == 0:
             if (len(group[0])) == 0: return None
             temp = tk.Listbox(group[1], font=('仿宋', 18))
             temp.bind('<<ListboxSelect>>', self.click_user_to_chat_event)
-            for user in group[0]: temp.insert('end', user)
+            for user in group[0]: temp.insert('end', f"{user}  未读{self.unread_message_num[user]}")
             temp.pack()
             group[2] = temp
         else:
@@ -162,19 +143,8 @@ class MainPanel():
             group[2] = 0
             self.update_groups()
 
-    def update_groups(self):
-        self.update_friend_users()
-        # self.groups['default'][1].pack()
-        for key, val in self.groups.items():
-            [self.create_chat_with_text_window(x) for x in val[0]]
-            if val[1] == None:
-                temp = val[0].copy()
-                self.create_new_group(key)
-                self.groups[key][0] = temp
-            self.groups[key][1].pack(fill='both')
-
     def btn_add_user_event(self):
-        user_window = AddUserPanel(self.root, self.groups, self.client)
+        user_window = AddUserPanel(self.root, self.groups, self.client, self.update_groups)
         self.update_groups()
 
     def btn_add_group_event(self):
@@ -189,21 +159,6 @@ class MainPanel():
             self.output.config(state=tk.NORMAL)
             self.output.delete('1.0', tk.END)
             self.output.config(state=tk.DISABLED)
-
-    def output_one_message(self, data:MessageNode, sending=False):
-        header, msg = data.get_output(sending)
-        self.output = self.chat_with_windows[data.sender]
-        self.output.config(state=tk.NORMAL)
-        if sending: self.output.insert(tk.END, header, 'sending')
-        else: self.output.insert(tk.END, header, 'receiving')
-        if data.msg_type == 'pic':
-            self.imgs.append(tk.PhotoImage(data=msg))
-            self.output.image_create(tk.END, image=self.imgs[-1])
-            self.output.insert(tk.END, '\n')
-        elif data.msg_type == 'text':
-            self.output.insert(tk.END, msg)
-        self.output.yview(tk.END)
-        self.output.config(state=tk.DISABLED)
 
     def ask_open_file(self):
         if self.chat_with == '':
@@ -226,10 +181,82 @@ class MainPanel():
         self.output_one_message(temp, sending=True)
         self.client.send_queue.put(temp)
 
+    def create_chat_with_text_window(self, usr):
+        if usr not in self.chat_with_windows:
+            self.chat_with_windows[usr] = tk.Text(self.frame_chat, state=tk.DISABLED, font=('仿宋', 20), yscrollcommand=self.output_scroll_bar.set)
+            self.chat_with_windows[usr].place(x=0, y=0, width=630, height=520)
+            self.chat_with_windows[usr].tag_config('sending', background="#0B5FA5", foreground="white")
+            self.chat_with_windows[usr].tag_config('receiving', background='gray', foreground='white')
+        if isinstance(self.output, tk.Text): self.output.tkraise()
+
+    def create_new_group(self, group_name: str):
+        frm = tk.Frame(self.frame_right_bar)
+        btn = tk.Button(frm, text=f"{group_name}  未读0", width=23, height=2, bg='#FFFF99',
+                        command=lambda: self.btn_group_show_friends(group_name))
+        btn.pack()
+        self.groups[group_name] = [[], frm, 0]
+
+    def get_group_button(self, group_name):
+        frm:tk.Frame = self.groups[group_name][1]
+        return frm.winfo_children()[0]
+
+    def update_groups(self):
+        self.update_friend_users()
+        # self.groups['default'][1].pack()
+        for key, val in self.groups.items():
+            [self.create_chat_with_text_window(x) for x in val[0]]
+            if val[1] == None:
+                temp = val[0].copy()
+                self.create_new_group(key)
+                self.groups[key][0] = temp
+            self.groups[key][1].pack(fill='both')
+
     def update_friend_users(self):
         self.friend_users.clear()
         for key, val in self.groups.items():
             [self.friend_users.add(x) for x in val[0]]
+        for x in self.friend_users:
+            if x not in self.unread_message_num:
+                self.unread_message_num[x] = 0
+
+    def update_unread_message(self):
+        for key, val in self.groups.items():
+            unread_sum = 0
+            for x in val[0]: unread_sum += self.unread_message_num[x]
+            self.get_group_button(key).config(text=f"{key}  未读{unread_sum}")
+            if val[2] == 0: continue
+            else:
+                try:
+                    index = int(val[2].curselection()[0])
+                except:
+                    index = None
+                val[2].delete(0, 'end')
+                for usr in val[0]:
+                    val[2].insert('end', f"{usr}  未读{self.unread_message_num[usr]}")
+                if index:
+                    val[2].select_set(index)
+
+    def output_one_message(self, data:MessageNode, sending=False):
+        header, msg = data.get_output(sending)
+        if sending:
+            temp = data.receiver
+            self.output = self.chat_with_windows[temp]
+            self.output.config(state=tk.NORMAL)
+            self.output.insert(tk.END, header, 'sending')
+        else:
+            temp = data.sender
+            if self.chat_with != temp: self.unread_message_num[temp] += 1
+            self.output = self.chat_with_windows[temp]
+            self.output.config(state=tk.NORMAL)
+            self.output.insert(tk.END, header, 'receiving')
+        if data.msg_type == 'pic':
+            self.imgs.append(tk.PhotoImage(data=msg))
+            self.output.image_create(tk.END, image=self.imgs[-1])
+            self.output.insert(tk.END, '\n')
+        elif data.msg_type == 'text':
+            self.output.insert(tk.END, msg)
+        self.output.yview(tk.END)
+        self.output.config(state=tk.DISABLED)
 
     def run_output(self):
         while True:
@@ -237,11 +264,11 @@ class MainPanel():
                 break
             data = self.receive_queue.get()
             if not data: continue
-            sender = try_decode(data.sender)
-            if sender not in self.friend_users:
-                self.groups['default'][0].append(sender)
+            if data.sender not in self.friend_users:
+                self.groups['default'][0].append(data.sender)
                 self.update_groups()
             self.output_one_message(data)
+        self.update_unread_message()
         self.root.after(300, self.run_output)
 
     def run(self):
@@ -256,6 +283,12 @@ class MainPanel():
         self.username = self.client.username
         self.read_groups_data()
         self.update_groups()
+        for usr in self.friend_users: self.unread_message_num[usr] = 0
+
+
+        self.output = tk.Text(self.frame_chat, state=tk.DISABLED, font=('仿宋', 20))
+        self.output.place(x=0, y=0, width=630, height=520)
+        self.output.tkraise()
 
 
         self.hello_label.config(text=f'Hello, {self.username}')
@@ -264,6 +297,15 @@ class MainPanel():
         self.root.mainloop()
         self.client.stop_signal = True
 
+    def on_closing(self):
+        for key, val in self.groups.items():
+            self.groups[key][1] = None
+            self.groups[key][2] = None
+        if not file_exist(self.username): os.mkdir(self.username)
+        with open(self.username+'/log.dat', 'wb') as file:
+            pickle.dump(self.groups, file)
+        self.root.quit()
+        self.root.destroy()
 
 class LoginPanel():
     def __init__(self, client, parent):
@@ -570,7 +612,8 @@ class GroupManagePanel():
 
 
 class AddUserPanel():
-    def __init__(self, parent: tk.Tk, groups, client:TCPClient):
+    def __init__(self, parent: tk.Tk, groups, client:TCPClient, update_groups_func):
+        self.update_groups_func = update_groups_func
         self.clinet = client
         self.parent = parent
         self.root = tk.Toplevel(parent)
@@ -616,10 +659,12 @@ class AddUserPanel():
             if self.clinet.search_user_exist(u):
                 self.user_accounts.add(u)
                 self.groups[g][0].append(u)
+                self.update_groups_func()
                 messagebox.showinfo(message='添加成功', parent=self.root)
             else:
                 messagebox.showerror(message='该账户不存在', parent=self.root)
         self.ent_account.delete(0, 'end')
+
     def quit(self):
         self.root.quit()
         self.root.destroy()
