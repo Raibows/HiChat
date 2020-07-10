@@ -1,38 +1,45 @@
 import tkinter as tk
+from tkinter import filedialog
 import pickle
 from PIL import Image
 from tools import *
 
 
 
-# def add_image():
-#
-#     text.config(state=tk.NORMAL)
-#     text.image_create(tk.END, image = photo) # Example 1
-#     text.insert(tk.END, '\n')
-#     text.config(state=tk.DISABLED)
-#
-# def add_text():
-#     text.config(state=tk.NORMAL)
-#     text.insert(tk.END, "some text here\n")
-#     text.config(state=tk.DISABLED)
-#
-#
-# root = tk.Tk()
-# img = open("your image here.png", 'rb').read()
-# photo = tk.PhotoImage(data=img)
-#
-# text = tk.Text(root, state=tk.DISABLED)
-# text.pack()
-# scroll_bar = tk.Scrollbar(root, orient='vertical', command=text.yview)
-# scroll_bar.pack(side='right', fill=tk.Y)
-# text.config(yscrollcommand=scroll_bar.set)
-#
-# tk.Button(root, text="Insert Image", command=add_image).pack(side='left')
-# tk.Button(root, text="Insert Text", command=add_text).pack(side='left')
-#
-#
-# root.mainloop()
+def add_image():
+
+    text.config(state=tk.NORMAL)
+    text.image_create(tk.END, image = photo) # Example 1
+    text.insert(tk.END, '\n')
+    text.config(state=tk.DISABLED)
+
+def add_text():
+    text.config(state=tk.NORMAL)
+    text.insert(tk.END, "some text here\n")
+    text.config(state=tk.DISABLED)
+
+def ask_open_file():
+    file = filedialog.askopenfile(mode='rb', )
+    print(type(file), file)
+    print(file.name.split('/'))
+    print(file.name.split('_'))
+
+
+root = tk.Tk()
+img = open("pics/welcome.png", 'rb').read()
+photo = tk.PhotoImage(data=img)
+
+text = tk.Text(root, state=tk.DISABLED)
+text.pack()
+scroll_bar = tk.Scrollbar(root, orient='vertical', command=text.yview)
+scroll_bar.pack(side='right', fill=tk.Y)
+text.config(yscrollcommand=scroll_bar.set)
+
+tk.Button(root, text="Insert Image", command=ask_open_file).pack(side='left')
+tk.Button(root, text="Insert Text", command=add_text).pack(side='left')
+
+
+root.mainloop()
 
 # print(pickle.dumps(img))
 
@@ -75,14 +82,4 @@ from tools import *
 
 
 if __name__ == "__main__":
-    import socket
-    def connect_to_server():
-        try:
-            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client.connect(('127.0.0.1', 5000))
-            client.setblocking(False)
-        except:
-            return False
-        return True
-    print(connect_to_server())
-    print(connect_to_server())
+    pass

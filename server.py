@@ -30,14 +30,6 @@ class TCPServer():
         self.messages = Queue()
 
 
-    def receive_msg(self, client:socket.socket):
-        sender = receive_data(client, decode_flag=True)
-        receiver = receive_data(client, decode_flag=True)
-        msg_type = receive_data(client, decode_flag=True)
-        msg = receive_data(client)
-        timestamp = receive_data(client, decode_flag=True)
-        return (msg_type, sender, receiver, msg, timestamp)
-
     def encode_msg(self, msg:tuple)->bytes:
         msg_type = msg[0].encode('utf-8')
         sender = msg[1].encode('utf-8')
@@ -47,6 +39,14 @@ class TCPServer():
         data = encode_header(sender) + sender + encode_header(receiver) + receiver + \
         encode_header(msg_type) + msg_type + encode_header(message) + message + encode_header(timestamp) + timestamp
         return data
+
+    def receive_msg(self, client:socket.socket):
+        sender = receive_data(client, decode_flag=True)
+        receiver = receive_data(client, decode_flag=True)
+        msg_type = receive_data(client, decode_flag=True)
+        msg = receive_data(client)
+        timestamp = receive_data(client, decode_flag=True)
+        return (msg_type, sender, receiver, msg, timestamp)
 
     def broadcast(self):
         while True:
@@ -58,8 +58,23 @@ class TCPServer():
                     time.sleep(0.8)
                     continue
                 print(f"{get_time()} Broadcast from {data[1]} to {data[2]} msg_type {data[0]} msg{data[3][:10]}")
-                self.clients_id[data[2]].sendall(self.encode_msg(data))
+                try:
+                    self.clients_id[data[2]].sendall(self.encode_msg(data))
+                except Exception as e:
+                    print(f"{get_time()} ERROR when broadcast {e}")
+                    self.del_socket(self.clients_id[data[2]])
+                    self.messages.put(data)
             else: time.sleep(0.5)
+
+    def del_socket(self, sk):
+        self.sockets_list.remove(sk)
+        if sk in self.clients_sk:
+            del self.clients_id[self.clients_sk[sk]]
+            del self.clients_sk[sk]
+        try:
+            sk.close()
+        except:
+            pass
 
     def handle_register(self, client_sk:socket.socket, data):
         if data[1] in self.users:
@@ -97,13 +112,9 @@ class TCPServer():
         res = encode_header(res) + res.encode('utf-8')
         client_sk.sendall(res)
 
-    def handle_quit(self, client_sk:socket.socket, data):
+    def handle_quit(self, client_sk:socket.socket):
         print(f"{get_time()} Closed connection from {client_sk.getpeername()} user quit")
-        self.sockets_list.remove(client_sk)
-        if client_sk in self.clients_sk:
-            del self.clients_id[self.clients_sk[client_sk]]
-            del self.clients_sk[client_sk]
-        client_sk.close()
+        self.del_socket(client_sk)
 
     def listening(self):
         print(f"{get_time()} Server {self.addr[0]}:{self.addr[1]} is running!")
@@ -118,7 +129,7 @@ class TCPServer():
                     data = self.receive_msg(sk)
                     if None in data: continue
                     elif data[0] == 'quit':
-                        self.handle_quit(sk, data)
+                        self.handle_quit(sk)
                     elif data[0] == 'register':
                         self.handle_register(sk, data)
                     elif data[0] == 'login':
@@ -131,9 +142,8 @@ class TCPServer():
 
             for sk in exception_sockets:
                 print(f"Closed connection from {sk.getpeername()} because of socket exception")
-                self.sockets_list.remove(sk)
-                del self.clients_id[self.clients_sk[sk]]
-                del self.clients_sk[sk]
+                self.del_socket(sk)
+
 
     def write_data(self):
         print(f"{get_time()} Have written user data to server/log.dat")

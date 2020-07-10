@@ -136,7 +136,6 @@ class MainPanel():
         if self.chat_with != temp:
             self.shift_chat_with_window(temp)
 
-
     def btn_group_show_friends(self, group):
         group = self.groups[group]
         if group[2] == 0:
@@ -250,23 +249,23 @@ class MainPanel():
         header, msg = data.get_output(sending)
         if sending:
             temp = data.receiver
-            self.output = self.chat_with_windows[temp]
-            self.output.config(state=tk.NORMAL)
-            self.output.insert(tk.END, header, 'sending')
+            out_window = self.chat_with_windows[temp]
+            out_window.config(state=tk.NORMAL)
+            out_window.insert(tk.END, header, 'sending')
         else:
             temp = data.sender
             if self.chat_with != temp: self.unread_message_num[temp] += 1
-            self.output = self.chat_with_windows[temp]
-            self.output.config(state=tk.NORMAL)
-            self.output.insert(tk.END, header, 'receiving')
+            out_window = self.chat_with_windows[temp]
+            out_window.config(state=tk.NORMAL)
+            out_window.insert(tk.END, header, 'receiving')
         if data.msg_type == 'pic':
             self.imgs.append(tk.PhotoImage(data=msg))
-            self.output.image_create(tk.END, image=self.imgs[-1])
-            self.output.insert(tk.END, '\n')
+            out_window.image_create(tk.END, image=self.imgs[-1])
+            out_window.insert(tk.END, '\n')
         elif data.msg_type == 'text':
-            self.output.insert(tk.END, msg)
-        self.output.yview(tk.END)
-        self.output.config(state=tk.DISABLED)
+            out_window.insert(tk.END, msg)
+        out_window.yview(tk.END)
+        out_window.config(state=tk.DISABLED)
 
     def run_output(self):
         while True:
