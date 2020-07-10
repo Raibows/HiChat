@@ -24,6 +24,7 @@ class TCPClient():
         self.output_func = None
 
     def connect_to_server(self):
+        return None
         try:
             self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.client.connect(self.server_addr)
@@ -42,7 +43,6 @@ class TCPClient():
                 if res: break
             except:
                 continue
-        self.client.close()
         return eval(res.decode('utf-8'))
 
     def login(self, username, password):
@@ -76,11 +76,14 @@ class TCPClient():
         self.thread_pause = False
         return res
 
+    def quit_from_server(self):
+        data = self.encode_message('None', 'quit', 'None', str(time.time()), 'None')
+        self.client.sendall(data)
+        return None
 
     def encode_message(self, receiver, msg_type, message, timestamp, username=None):
         if username is None: username = self.username
         if msg_type == 'pic':
-            print(msg_type, timestamp)
             data = encode_header(username) + username.encode('utf-8') + encode_header(receiver) + \
                    receiver.encode('utf-8') + encode_header(msg_type) + msg_type.encode('utf-8') + \
                    encode_header(message) + message + encode_header(timestamp) + str(timestamp).encode('utf-8')

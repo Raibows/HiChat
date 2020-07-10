@@ -71,7 +71,7 @@ class TCPServer():
             res = 'True'
         res = encode_header(res) + res.encode('utf-8')
         client_sk.sendall(res)
-        client_sk.close()
+        # client_sk.close()
 
     def handle_login(self, client_sk:socket.socket, data):
         res = 'False'
@@ -82,10 +82,10 @@ class TCPServer():
             res = 'True'
             self.clients_id[data[1]] = client_sk
             self.clients_sk[client_sk] = data[1]
-            self.sockets_list.append(client_sk)
             print(f"{get_time()} Login success from {client_sk.getpeername()} username {data[1]}")
         res = encode_header(res) + res.encode('utf-8')
         client_sk.sendall(res)
+        # if res == 'False': client_sk.close()
 
     def handle_search(self, client_sk:socket.socket, data):
         self.clients_id[data[1]] = client_sk
@@ -97,6 +97,14 @@ class TCPServer():
         res = encode_header(res) + res.encode('utf-8')
         client_sk.sendall(res)
 
+    def handle_quit(self, client_sk:socket.socket, data):
+        print(f"{get_time()} Closed connection from {client_sk.getpeername()} user quit")
+        self.sockets_list.remove(client_sk)
+        if client_sk in self.clients_sk:
+            del self.clients_id[self.clients_sk[client_sk]]
+            del self.clients_sk[client_sk]
+        client_sk.close()
+
     def listening(self):
         print(f"{get_time()} Server {self.addr[0]}:{self.addr[1]} is running!")
         while True:
@@ -104,29 +112,25 @@ class TCPServer():
             for sk in read_sockets:
                 if sk == self.server:
                     client_sk, client_addr = self.server.accept()
-                    print(f"{get_time()} Connecting from {client_sk.getpeername()}")
-                    data = self.receive_msg(client_sk)
-                    if data[0] == 'register':
-                        self.handle_register(client_sk, data)
-                    elif data[0] == 'login':
-                       self.handle_login(client_sk, data)
-                    elif data[0] == 'search':
-                        self.handle_search(client_sk, data)
+                    self.sockets_list.append(client_sk)
+                    print(f"{get_time()} Accept connection from {client_sk.getpeername()}")
                 else:
                     data = self.receive_msg(sk)
-                    if None in data:
-                        print(f"{get_time()} Closed connection from {sk.getpeername()} because of {data}")
-                        self.sockets_list.remove(sk)
-                        del self.clients_id[self.clients_sk[sk]]
-                        del self.clients_sk[sk]
+                    if None in data: continue
+                    elif data[0] == 'quit':
+                        self.handle_quit(sk, data)
+                    elif data[0] == 'register':
+                        self.handle_register(sk, data)
+                    elif data[0] == 'login':
+                        self.handle_login(sk, data)
                     elif data[0] == 'search':
                         self.handle_search(sk, data)
                     else:
                         print(f"{get_time()} Received from {data[1]} to {data[2]} msg_type {data[0]} msg{data[3][:10]}")
                         self.messages.put(data)
 
-
             for sk in exception_sockets:
+                print(f"Closed connection from {sk.getpeername()} because of socket exception")
                 self.sockets_list.remove(sk)
                 del self.clients_id[self.clients_sk[sk]]
                 del self.clients_sk[sk]

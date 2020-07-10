@@ -197,7 +197,7 @@ class MainPanel():
             self.chat_with_windows[usr].place(x=0, y=0, width=630, height=520)
             self.chat_with_windows[usr].tag_config('sending', background="#0B5FA5", foreground="white")
             self.chat_with_windows[usr].tag_config('receiving', background='gray', foreground='white')
-        # if isinstance(self.output, tk.Text): self.output.tkraise()
+        if isinstance(self.output, tk.Text): self.output.tkraise()
 
     def create_new_group(self, group_name: str):
         frm = tk.Frame(self.frame_right_bar)
@@ -287,8 +287,7 @@ class MainPanel():
         lg_window.run()
         self.root.deiconify()
         if self.client.username == None:
-            self.root.quit()
-            self.root.destroy()
+            self.on_closing()
             return None
         self.username = self.client.username
         self.read_groups_data()
@@ -306,17 +305,23 @@ class MainPanel():
         self.client.run(self.receive_queue)
         self.root.after(300, self.run_output)
         self.root.mainloop()
-        self.client.stop_signal = True
+
 
     def on_closing(self):
+        self.client.stop_signal = True
+        self.client.quit_from_server()
         for key, val in self.groups.items():
             self.groups[key][1] = None
             self.groups[key][2] = None
-        if not file_exist(self.username): os.mkdir(self.username)
-        with open(self.username+'/log.dat', 'wb') as file:
-            pickle.dump(self.groups, file)
+        if self.username:
+            if not file_exist(self.username): os.mkdir(self.username)
+            with open(self.username+'/log.dat', 'wb') as file:
+                pickle.dump(self.groups, file)
         self.root.quit()
-        self.root.destroy()
+        try:
+            self.root.destroy()
+        except:
+            pass
 
 class LoginPanel():
     def __init__(self, client, parent):
