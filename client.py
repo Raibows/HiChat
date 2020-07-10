@@ -35,7 +35,7 @@ class TCPClient():
     def register(self, username, password):
         self.connect_to_server()
         data = self.encode_message('None', 'register', password, str(time.time()), username)
-        self.client.send(data)
+        self.client.sendall(data)
         while True:
             try:
                 res = receive_data(self.client)
@@ -48,7 +48,7 @@ class TCPClient():
     def login(self, username, password):
         self.connect_to_server()
         data = self.encode_message('None', 'login', password, str(time.time()), username)
-        self.client.send(data)
+        self.client.sendall(data)
         while True:
             try:
                 res = receive_data(self.client)
@@ -65,7 +65,7 @@ class TCPClient():
     def search_user_exist(self, username):
         self.thread_pause = True
         data = self.encode_message('None', 'search', username, str(time.time()))
-        self.client.send(data)
+        self.client.sendall(data)
         while True:
             try:
                 res = receive_data(self.client)
@@ -80,10 +80,10 @@ class TCPClient():
     def encode_message(self, receiver, msg_type, message, timestamp, username=None):
         if username is None: username = self.username
         if msg_type == 'pic':
+            print(msg_type, timestamp)
             data = encode_header(username) + username.encode('utf-8') + encode_header(receiver) + \
                    receiver.encode('utf-8') + encode_header(msg_type) + msg_type.encode('utf-8') + \
-                   encode_header(message) + message + encode_header(timestamp) + str(timestamp).encode(
-                'utf-8')
+                   encode_header(message) + message + encode_header(timestamp) + str(timestamp).encode('utf-8')
         else:
             data = encode_header(username) + username.encode('utf-8') + encode_header(receiver) + \
                 receiver.encode('utf-8') + encode_header(msg_type) + msg_type.encode('utf-8') + \
@@ -129,7 +129,13 @@ class TCPClient():
             msg:MessageNode = self.send_queue.get()
             if msg:
                 data = self.encode_message(msg.receiver, msg.msg_type, msg.msg, msg.timestamp)
-                self.client.send(data)
+                while True:
+                    try:
+                        self.client.sendall(data)
+                        break
+                    except Exception as e:
+                        print(f"{get_time()} ERROR", e)
+
 
 
     def run(self, receive_queue):

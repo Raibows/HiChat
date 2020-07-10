@@ -107,6 +107,19 @@ class MainPanel():
                 self.groups = pickle.load(file)
         else: self.create_new_group('default')
 
+    def shift_chat_with_window(self, username=None):
+        if not username:
+            username = self.username
+            self.chat_with = ''
+        else:
+            self.chat_with = username
+        self.output = self.chat_with_windows[username]
+        self.output.config(state=tk.DISABLED, yscrollcommand=self.output_scroll_bar.set)
+        self.output_scroll_bar.config(command=self.output.yview)
+        self.output.yview(tk.END)
+        self.output.tkraise()
+        self.chat_with_label.config(text=self.chat_with)
+
     def click_user_to_chat_event(self, event):
         widget = event.widget
         try:
@@ -121,13 +134,8 @@ class MainPanel():
         temp = temp[0]
         self.unread_message_num[temp] = 0
         if self.chat_with != temp:
-            self.output = self.chat_with_windows[temp]
-            self.output.config(state=tk.DISABLED, yscrollcommand=self.output_scroll_bar.set)
-            self.output_scroll_bar.config(command=self.output.yview)
-            self.output.yview(tk.END)
-            self.output.tkraise()
-        self.chat_with = temp
-        self.chat_with_label.config(text=self.chat_with)
+            self.shift_chat_with_window(temp)
+
 
     def btn_group_show_friends(self, group):
         group = self.groups[group]
@@ -142,6 +150,7 @@ class MainPanel():
             group[2].destroy()
             group[2] = 0
             self.update_groups()
+            self.shift_chat_with_window(None)
 
     def btn_add_user_event(self):
         user_window = AddUserPanel(self.root, self.groups, self.client, self.update_groups)
@@ -188,7 +197,7 @@ class MainPanel():
             self.chat_with_windows[usr].place(x=0, y=0, width=630, height=520)
             self.chat_with_windows[usr].tag_config('sending', background="#0B5FA5", foreground="white")
             self.chat_with_windows[usr].tag_config('receiving', background='gray', foreground='white')
-        if isinstance(self.output, tk.Text): self.output.tkraise()
+        # if isinstance(self.output, tk.Text): self.output.tkraise()
 
     def create_new_group(self, group_name: str):
         frm = tk.Frame(self.frame_right_bar)
@@ -289,6 +298,7 @@ class MainPanel():
 
         self.output = tk.Text(self.frame_chat, state=tk.DISABLED, font=('仿宋', 20))
         self.output.place(x=0, y=0, width=630, height=520)
+        self.chat_with_windows[self.username] = self.output
         self.output.tkraise()
 
 
@@ -374,7 +384,7 @@ class LoginPanel():
                 self.root.quit()
                 self.root.destroy()
             else:
-                messagebox.showerror(message='密码错误！', parent=self.root)
+                messagebox.showerror(message='账号不存在或密码错误！', parent=self.root)
 
     def btn_register_click_event(self):
         register_window = RegisterPanel(self.root, self.client)

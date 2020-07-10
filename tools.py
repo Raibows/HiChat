@@ -1,6 +1,5 @@
 import os
-from time import ctime
-import tkinter as tk
+import time
 from datetime import datetime
 
 
@@ -27,14 +26,6 @@ class MessageNode():
         return self.timestamp == other.timestamp
 
 
-def clone(widget):
-    parent = widget.nametowidget(widget.winfo_parent())
-    cls = widget.__class__
-
-    clone = cls(parent)
-    for key in widget.configure():
-        clone.configure({key: widget.cget(key)})
-    return clone
 
 def file_exist(path):
     return os.path.exists(path)
@@ -52,12 +43,28 @@ def standard_output(sender, receiver, timestamp, sending=False):
     else:
         return f"{receiver} << {sender} [{timestamp.strftime('%H:%M:%S')}]\n"
 
+
+def receive_all(socket, data_len):
+    data = b''
+    timeout = 0
+    while len(data) < data_len:
+        try:
+            data += socket.recv(data_len - len(data))
+        except Exception as e:
+            print(f'{get_time()} RECEIVE_ALL ERROR', e)
+            timeout += 1
+            if timeout > 3: return None
+            time.sleep(0.08)
+    return data
+
 def receive_data(socket, _header_len=10, decode_flag=False)->bytes:
     try:
         header = socket.recv(_header_len)
-        if not len(header): return None
+        # header = receive_all(socket, _header_len)
+        # print('header', header)
+        if not header or not len(header): return None
         header = int(header.decode('utf-8').strip())
-        data = socket.recv(header)
+        data = receive_all(socket, header)
         if decode_flag: return data.decode('utf-8')
         else: return data
     except:

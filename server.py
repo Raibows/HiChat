@@ -48,7 +48,6 @@ class TCPServer():
         encode_header(msg_type) + msg_type + encode_header(message) + message + encode_header(timestamp) + timestamp
         return data
 
-
     def broadcast(self):
         while True:
             if not self.messages.empty():
@@ -59,7 +58,7 @@ class TCPServer():
                     time.sleep(0.8)
                     continue
                 print(f"{get_time()} Broadcast from {data[1]} to {data[2]} msg_type {data[0]} msg{data[3][:10]}")
-                self.clients_id[data[2]].send(self.encode_msg(data))
+                self.clients_id[data[2]].sendall(self.encode_msg(data))
             else: time.sleep(0.5)
 
     def handle_register(self, client_sk:socket.socket, data):
@@ -71,7 +70,7 @@ class TCPServer():
             print(f"{get_time()} New Register success from {client_sk.getpeername()} username {data[1]}")
             res = 'True'
         res = encode_header(res) + res.encode('utf-8')
-        client_sk.send(res)
+        client_sk.sendall(res)
         client_sk.close()
 
     def handle_login(self, client_sk:socket.socket, data):
@@ -86,7 +85,7 @@ class TCPServer():
             self.sockets_list.append(client_sk)
             print(f"{get_time()} Login success from {client_sk.getpeername()} username {data[1]}")
         res = encode_header(res) + res.encode('utf-8')
-        client_sk.send(res)
+        client_sk.sendall(res)
 
     def handle_search(self, client_sk:socket.socket, data):
         self.clients_id[data[1]] = client_sk
@@ -96,8 +95,7 @@ class TCPServer():
         else: res = 'False'
         print(f"{get_time()} Search {res} from {client_sk.getpeername()} username {data[1]}")
         res = encode_header(res) + res.encode('utf-8')
-        client_sk.send(res)
-
+        client_sk.sendall(res)
 
     def listening(self):
         print(f"{get_time()} Server {self.addr[0]}:{self.addr[1]} is running!")
@@ -106,6 +104,7 @@ class TCPServer():
             for sk in read_sockets:
                 if sk == self.server:
                     client_sk, client_addr = self.server.accept()
+                    print(f"{get_time()} Connecting from {client_sk.getpeername()}")
                     data = self.receive_msg(client_sk)
                     if data[0] == 'register':
                         self.handle_register(client_sk, data)
@@ -116,7 +115,7 @@ class TCPServer():
                 else:
                     data = self.receive_msg(sk)
                     if None in data:
-                        print(f"{get_time()} Closed connection from {sk.getpeername()}")
+                        print(f"{get_time()} Closed connection from {sk.getpeername()} because of {data}")
                         self.sockets_list.remove(sk)
                         del self.clients_id[self.clients_sk[sk]]
                         del self.clients_sk[sk]
