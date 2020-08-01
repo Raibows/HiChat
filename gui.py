@@ -87,6 +87,7 @@ class MainPanel():
         self.frame_user_input = tk.Frame(self.root)
         self.frame_user_input.place(x=0, y=520, width=650, height=180)
         self.user_input = tk.Text(self.frame_user_input, font=('仿宋', 18))
+        self.user_input.bind('<Return>', self.enter_key_event)
         self.user_input.place(x=0, y=0, width=630, height=130)
 
         self.btn_user_input_ok = tk.Button(self.frame_user_input, text='发送', font=('仿宋', 18), bg='#99FF99',
@@ -189,6 +190,10 @@ class MainPanel():
         temp = MessageNode('text', time.time(), text_content, self.username, self.chat_with)
         self.output_one_message(temp, sending=True)
         self.client.send_queue.put(temp)
+
+    def enter_key_event(self, event):
+        self.btn_get_text_data_event(self.user_input)
+        return 'break'
 
     def create_chat_with_text_window(self, usr):
         if usr not in self.chat_with_windows:
@@ -336,10 +341,11 @@ class LoginPanel():
 
         # header
         self.header = tk.Canvas(self.root)
-        self.image_file = tk.PhotoImage(file='pics/welcome.png')
-        self.image_file = self.image_file.subsample(2, 2)
         self.header.place(x=0, y=0, width=380, height=200)
-        self.header.create_image(210, 5, anchor='nw', image=self.image_file)
+        if file_exist('pics/welcome.png'):
+            self.image_file = tk.PhotoImage(file='pics/welcome.png')
+            self.image_file = self.image_file.subsample(2, 2)
+            self.header.create_image(210, 5, anchor='nw', image=self.image_file)
 
 
         # input
