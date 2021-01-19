@@ -97,6 +97,7 @@ class TCPClient():
     def receive_msg(self):
         time.sleep(2)
         while True and not self.stop_signal:
+            time.sleep(0.5)
             try:
                 while True:
                     if self.thread_pause: continue
